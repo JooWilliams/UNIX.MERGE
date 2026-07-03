@@ -160,10 +160,10 @@ mergeBtn.addEventListener("click", async () => {
 
     URL.revokeObjectURL(url);
 
-    showMessage("✓ PDFs mesclados com sucesso!", "success");
+    showMessage("Documentos mesclados!", "success");
   } catch (error) {
     console.error("Erro ao mesclar PDFs:", error);
-    showMessage("✗ Erro ao mesclar PDFs: " + error.message, "error");
+    showMessage("Erro ao mesclar documentos: " + error.message, "error");
   } finally {
     mergeBtn.disabled = false;
     clearBtn.disabled = false;

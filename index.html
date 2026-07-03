@@ -8,12 +8,13 @@
     <link rel="stylesheet" href="assets/style.css" />
   </head>
   <body>
-    <div class="container">
-      <h1>📄 PDF Merger</h1>
+    <section>
+    <div class="tit">
+      <h1 id="brand">UNIX.MERGE</h1>
       <p class="subtitle">Junte múltiplos arquivos PDF em um só</p>
-
+    </div>
+    <div class="container">
       <div class="upload-area" id="uploadArea">
-        <div class="upload-icon">📁</div>
         <div class="upload-text">Clique ou arraste arquivos PDF aqui</div>
         <div class="upload-hint">Você pode selecionar múltiplos arquivos</div>
         <input type="file" id="fileInput" accept=".pdf" multiple />
@@ -35,6 +36,7 @@
 
       <div class="message" id="message"></div>
     </div>
+    </section>
     <script src="assets/script.js"></script>
   </body>
 </html>

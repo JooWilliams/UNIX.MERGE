@@ -5,7 +5,7 @@
 }
 
 body {
-  font-family: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+  font-family: "Poppins", sans-serif;
   background: oklch(97.015% 0.00011 271.152);
   min-height: 100vh;
   display: flex;
@@ -19,7 +19,9 @@ section {
 }
 
 #brand {
-  font-size: 1.7em;
+  font-size: 1.8em;
+  font-family: "Kanit", sans-serif;
+  font-weight: 600;
 }
 
 .tit {
@@ -39,7 +41,7 @@ h1 {
 }
 
 .upload-area {
-  border: 1.7px dashed #b9b9b9;
+  border: 2px dashed #b9b9b9;
   border-radius: 12px;
   padding: 60px;
   height: 250px;
@@ -154,11 +156,12 @@ h1 {
   border: none;
   border-radius: 10px;
   padding: 10px;
-  font-size: 0.7em;
-  font-weight: 400;
+  font-size: 0.85em;
+  font-weight: 500;
   cursor: pointer;
   margin-top: 20px;
   transition: all 0.3s ease;
+  font-family: "Poppins", sans-serif;
 }
 
 .merge-btn:hover:not(:disabled) {
@@ -167,7 +170,7 @@ h1 {
 }
 
 .merge-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 

@@ -6,37 +6,49 @@
     <title>PDF Merger - Juntar PDFs</title>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <link rel="stylesheet" href="assets/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+      rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+      rel="stylesheet" />
   </head>
   <body>
     <section>
-    <div class="tit">
-      <h1 id="brand">UNIX.MERGE</h1>
-      <p class="subtitle">Junte múltiplos arquivos PDF em um só</p>
-    </div>
-    <div class="container">
-      <div class="upload-area" id="uploadArea">
-        <div class="upload-icon">+</div>
-        <div class="upload-text">Clique ou arraste arquivos aqui</div>
-        <div class="upload-hint">Apenas arquivos PDF (Máx. 50MB cada)</div>
-        <input type="file" id="fileInput" accept=".pdf" multiple />
+      <div class="tit">
+        <h1 id="brand">UNIX.MERGE</h1>
+        <p class="subtitle">Junte múltiplos arquivos PDF em um só</p>
       </div>
-
-      <div class="file-list" id="fileList"></div>
-
-      <button class="merge-btn" id="mergeBtn" disabled>Juntar Documentos</button>
-
-      <button class="clear-btn" id="clearBtn" style="display: none">
-        Limpar Tudo
-      </button>
-
-      <div class="progress-container" id="progressContainer">
-        <div class="progress-bar">
-          <div class="progress-fill" id="progressFill">0%</div>
+      <div class="container">
+        <div class="upload-area" id="uploadArea">
+          <div class="upload-icon">+</div>
+          <div class="upload-text">Clique ou arraste arquivos aqui</div>
+          <div class="upload-hint">Apenas arquivos PDF (Máx. 50MB cada)</div>
+          <input type="file" id="fileInput" accept=".pdf" multiple />
         </div>
-      </div>
 
-      <div class="message" id="message"></div>
-    </div>
+        <div class="file-list" id="fileList"></div>
+
+        <button class="merge-btn" id="mergeBtn" disabled>
+          Juntar Documentos
+        </button>
+
+        <button class="clear-btn" id="clearBtn" style="display: none">
+          Limpar Tudo
+        </button>
+
+        <div class="progress-container" id="progressContainer">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill">0%</div>
+          </div>
+        </div>
+
+        <div class="message" id="message"></div>
+      </div>
     </section>
     <script src="assets/script.js"></script>
   </body>

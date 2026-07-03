@@ -9,12 +9,15 @@ body {
   background: oklch(97.015% 0.00011 271.152);
   min-height: 100vh;
   display: flex;
-  justify-content: center;
   align-items: center;
+  flex-direction: column;
   padding: 20px;
 }
 
 section {
+  flex: 1;
+  justify-content: center;
+  align-items: center;
   padding: 100px;
 }
 
@@ -94,6 +97,7 @@ h1 {
 .file-list {
   margin-top: 30px;
   max-height: 300px;
+  max-width: 600px;
   overflow-y: auto;
 }
 
@@ -237,4 +241,11 @@ h1 {
 
 .clear-btn:hover {
   background: #676a6d;
+}
+
+.footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 0.8em;
+    color: #999;
 }

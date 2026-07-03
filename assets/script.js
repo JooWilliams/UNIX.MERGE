@@ -1,185 +1,188 @@
 const { PDFDocument } = PDFLib;
-        
-        let selectedFiles = [];
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('fileInput');
-        const fileList = document.getElementById('fileList');
-        const mergeBtn = document.getElementById('mergeBtn');
-        const clearBtn = document.getElementById('clearBtn');
-        const progressContainer = document.getElementById('progressContainer');
-        const progressFill = document.getElementById('progressFill');
-        const message = document.getElementById('message');
 
-        // Click para abrir seletor de arquivos
-        uploadArea.addEventListener('click', () => fileInput.click());
+let selectedFiles = [];
+const uploadArea = document.getElementById("uploadArea");
+const fileInput = document.getElementById("fileInput");
+const fileList = document.getElementById("fileList");
+const mergeBtn = document.getElementById("mergeBtn");
+const clearBtn = document.getElementById("clearBtn");
+const progressContainer = document.getElementById("progressContainer");
+const progressFill = document.getElementById("progressFill");
+const message = document.getElementById("message");
 
-        // Prevenir comportamento padrão de drag
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, preventDefaults, false);
-        });
+// Click para abrir seletor de arquivos
+uploadArea.addEventListener("click", () => fileInput.click());
 
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
+// Prevenir comportamento padrão de drag
+["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+  uploadArea.addEventListener(eventName, preventDefaults, false);
+});
 
-        // Highlight ao arrastar
-        ['dragenter', 'dragover'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, () => {
-                uploadArea.classList.add('dragover');
-            });
-        });
+function preventDefaults(e) {
+  e.preventDefault();
+  e.stopPropagation();
+}
 
-        ['dragleave', 'drop'].forEach(eventName => {
-            uploadArea.addEventListener(eventName, () => {
-                uploadArea.classList.remove('dragover');
-            });
-        });
+// Highlight ao arrastar
+["dragenter", "dragover"].forEach((eventName) => {
+  uploadArea.addEventListener(eventName, () => {
+    uploadArea.classList.add("dragover");
+  });
+});
 
-        // Drop de arquivos
-        uploadArea.addEventListener('drop', (e) => {
-            const files = Array.from(e.dataTransfer.files).filter(file => 
-                file.type === 'application/pdf'
-            );
-            addFiles(files);
-        });
+["dragleave", "drop"].forEach((eventName) => {
+  uploadArea.addEventListener(eventName, () => {
+    uploadArea.classList.remove("dragover");
+  });
+});
 
-        // Seleção de arquivos
-        fileInput.addEventListener('change', (e) => {
-            const files = Array.from(e.target.files);
-            addFiles(files);
-            fileInput.value = ''; // Limpar input
-        });
+// Drop de arquivos
+uploadArea.addEventListener("drop", (e) => {
+  const files = Array.from(e.dataTransfer.files).filter(
+    (file) => file.type === "application/pdf",
+  );
+  addFiles(files);
+});
 
-        function addFiles(files) {
-            selectedFiles = [...selectedFiles, ...files];
-            // Ordenar alfabeticamente por nome do arquivo
-            selectedFiles.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
-            updateFileList();
-            updateMergeButton();
-        }
+// Seleção de arquivos
+fileInput.addEventListener("change", (e) => {
+  const files = Array.from(e.target.files);
+  addFiles(files);
+  fileInput.value = ""; // Limpar input
+});
 
-        function updateFileList() {
-            fileList.innerHTML = '';
-            
-            selectedFiles.forEach((file, index) => {
-                const fileItem = document.createElement('div');
-                fileItem.className = 'file-item';
-                
-                const fileName = document.createElement('span');
-                fileName.className = 'file-name';
-                fileName.textContent = file.name;
-                
-                const fileSize = document.createElement('span');
-                fileSize.className = 'file-size';
-                fileSize.textContent = formatFileSize(file.size);
-                
-                const removeBtn = document.createElement('button');
-                removeBtn.className = 'remove-btn';
-                removeBtn.textContent = '✕';
-                removeBtn.onclick = () => removeFile(index);
-                
-                fileItem.appendChild(fileName);
-                fileItem.appendChild(fileSize);
-                fileItem.appendChild(removeBtn);
-                fileList.appendChild(fileItem);
-            });
+function addFiles(files) {
+  selectedFiles = [...selectedFiles, ...files];
+  // Ordenar alfabeticamente por nome do arquivo
+  selectedFiles.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  updateFileList();
+  updateMergeButton();
+}
 
-            clearBtn.style.display = selectedFiles.length > 0 ? 'block' : 'none';
-        }
+function updateFileList() {
+  fileList.innerHTML = "";
 
-        function removeFile(index) {
-            selectedFiles.splice(index, 1);
-            updateFileList();
-            updateMergeButton();
-        }
+  selectedFiles.forEach((file, index) => {
+    const fileItem = document.createElement("div");
+    fileItem.className = "file-item";
 
-        function updateMergeButton() {
-            mergeBtn.disabled = selectedFiles.length < 2;
-        }
+    const fileName = document.createElement("span");
+    fileName.className = "file-name";
+    fileName.textContent = file.name;
 
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-        }
+    const fileSize = document.createElement("span");
+    fileSize.className = "file-size";
+    fileSize.textContent = formatFileSize(file.size);
 
-        clearBtn.addEventListener('click', () => {
-            selectedFiles = [];
-            updateFileList();
-            updateMergeButton();
-            hideMessage();
-        });
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "remove-btn";
+    removeBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/>
+    <line x1="10" y1="11" x2="10" y2="17"/>
+    <line x1="14" y1="11" x2="14" y2="17"/>
+</svg>`;
+    removeBtn.onclick = () => removeFile(index);
 
-        mergeBtn.addEventListener('click', async () => {
-            if (selectedFiles.length < 2) {
-                showMessage('Selecione pelo menos 2 arquivos PDF', 'error');
-                return;
-            }
+    fileItem.appendChild(fileName);
+    fileItem.appendChild(fileSize);
+    fileItem.appendChild(removeBtn);
+    fileList.appendChild(fileItem);
+  });
 
-            try {
-                mergeBtn.disabled = true;
-                clearBtn.disabled = true;
-                progressContainer.style.display = 'block';
-                hideMessage();
+  clearBtn.style.display = selectedFiles.length > 0 ? "block" : "none";
+}
 
-                // Criar novo documento PDF
-                const mergedPdf = await PDFDocument.create();
-                
-                // Processar cada arquivo
-                for (let i = 0; i < selectedFiles.length; i++) {
-                    const file = selectedFiles[i];
-                    const progress = Math.round(((i + 1) / selectedFiles.length) * 100);
-                    updateProgress(progress);
+function removeFile(index) {
+  selectedFiles.splice(index, 1);
+  updateFileList();
+  updateMergeButton();
+}
 
-                    const arrayBuffer = await file.arrayBuffer();
-                    const pdf = await PDFDocument.load(arrayBuffer);
-                    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-                    
-                    copiedPages.forEach((page) => {
-                        mergedPdf.addPage(page);
-                    });
-                }
+function updateMergeButton() {
+  mergeBtn.disabled = selectedFiles.length < 2;
+}
 
-                // Salvar PDF mesclado
-                const mergedPdfFile = await mergedPdf.save();
-                const blob = new Blob([mergedPdfFile], { type: 'application/pdf' });
-                const url = URL.createObjectURL(blob);
-                
-                // Download automático
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = 'merged_document.pdf';
-                link.click();
-                
-                URL.revokeObjectURL(url);
-                
-                showMessage('✓ PDFs mesclados com sucesso!', 'success');
-                
-            } catch (error) {
-                console.error('Erro ao mesclar PDFs:', error);
-                showMessage('✗ Erro ao mesclar PDFs: ' + error.message, 'error');
-            } finally {
-                mergeBtn.disabled = false;
-                clearBtn.disabled = false;
-                progressContainer.style.display = 'none';
-                updateProgress(0);
-            }
-        });
+function formatFileSize(bytes) {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+}
 
-        function updateProgress(percent) {
-            progressFill.style.width = percent + '%';
-            progressFill.textContent = percent + '%';
-        }
+clearBtn.addEventListener("click", () => {
+  selectedFiles = [];
+  updateFileList();
+  updateMergeButton();
+  hideMessage();
+});
 
-        function showMessage(text, type) {
-            message.textContent = text;
-            message.className = 'message ' + type;
-            message.style.display = 'block';
-        }
+mergeBtn.addEventListener("click", async () => {
+  if (selectedFiles.length < 2) {
+    showMessage("Selecione pelo menos 2 arquivos PDF", "error");
+    return;
+  }
 
-        function hideMessage() {
-            message.style.display = 'none';
-        }
+  try {
+    mergeBtn.disabled = true;
+    clearBtn.disabled = true;
+    progressContainer.style.display = "block";
+    hideMessage();
+
+    // Criar novo documento PDF
+    const mergedPdf = await PDFDocument.create();
+
+    // Processar cada arquivo
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      const progress = Math.round(((i + 1) / selectedFiles.length) * 100);
+      updateProgress(progress);
+
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await PDFDocument.load(arrayBuffer);
+      const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+
+      copiedPages.forEach((page) => {
+        mergedPdf.addPage(page);
+      });
+    }
+
+    // Salvar PDF mesclado
+    const mergedPdfFile = await mergedPdf.save();
+    const blob = new Blob([mergedPdfFile], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+
+    // Download automático
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "merged_document.pdf";
+    link.click();
+
+    URL.revokeObjectURL(url);
+
+    showMessage("✓ PDFs mesclados com sucesso!", "success");
+  } catch (error) {
+    console.error("Erro ao mesclar PDFs:", error);
+    showMessage("✗ Erro ao mesclar PDFs: " + error.message, "error");
+  } finally {
+    mergeBtn.disabled = false;
+    clearBtn.disabled = false;
+    progressContainer.style.display = "none";
+    updateProgress(0);
+  }
+});
+
+function updateProgress(percent) {
+  progressFill.style.width = percent + "%";
+  progressFill.textContent = percent + "%";
+}
+
+function showMessage(text, type) {
+  message.textContent = text;
+  message.className = "message " + type;
+  message.style.display = "block";
+}
+
+function hideMessage() {
+  message.style.display = "none";
+}

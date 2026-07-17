@@ -90,6 +90,13 @@ h1 {
   font-size: 0.6em;
 }
 
+.fileCount{
+  font-size: 12px;
+  color: #333;
+  padding: 8px;
+  text-align: end;
+}
+
 #fileInput {
   display: none;
 }

@@ -3,6 +3,7 @@ const { PDFDocument } = PDFLib;
 let selectedFiles = [];
 const uploadArea = document.getElementById("uploadArea");
 const fileInput = document.getElementById("fileInput");
+const fileCount = document.getElementById("fileCount");
 const fileList = document.getElementById("fileList");
 const mergeBtn = document.getElementById("mergeBtn");
 const clearBtn = document.getElementById("clearBtn");
@@ -61,6 +62,8 @@ function addFiles(files) {
 
 function updateFileList() {
   fileList.innerHTML = "";
+
+  fileCount.textContent = "Quantidade de arquivos: " + selectedFiles.length
 
   selectedFiles.forEach((file, index) => {
     const fileItem = document.createElement("div");

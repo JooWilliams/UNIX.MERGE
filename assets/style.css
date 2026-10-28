@@ -67,8 +67,11 @@ h1 {
 }
 
 .converter-card {
+  position: fixed;
+  top: 206px;
+  right: 24px;
   width: 190px;
-  min-height: 250px;
+  min-height: 200px;
   padding: 22px 18px;
   border: 1px solid #e8e8e8;
   border-radius: 12px;
@@ -337,6 +340,12 @@ h1 {
 }
 
 .converter-dialog {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
   width: min(460px, calc(100% - 32px));
   padding: 24px;
   border: 1px solid #e8e8e8;
@@ -460,6 +469,10 @@ h1 {
     padding: 50px 20px;
   }
 
+  .converter-card {
+    top: 186px;
+  }
+
   .tools-layout {
     align-items: stretch;
   }
@@ -502,6 +515,8 @@ h1 {
   }
 
   .converter-card {
+    position: static;
+    transform: none;
     width: 100%;
     min-height: 0;
   }

@@ -64,8 +64,6 @@ fileInput.addEventListener("change", (e) => {
 
 function addFiles(files) {
   selectedFiles = [...selectedFiles, ...files];
-  // Ordenar alfabeticamente por nome do arquivo
-  selectedFiles.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   updateFileList();
   updateMergeButton();
 }
@@ -73,11 +71,16 @@ function addFiles(files) {
 function updateFileList() {
   fileList.innerHTML = "";
 
-  fileCount.textContent = "Quantidade de arquivos: " + selectedFiles.length
+  fileCount.textContent =
+    "Quantidade de arquivos: " +
+    selectedFiles.length +
+    (selectedFiles.length > 1 ? " • Arraste para reordenar" : "");
 
   selectedFiles.forEach((file, index) => {
     const fileItem = document.createElement("div");
     fileItem.className = "file-item";
+    fileItem.draggable = true;
+    fileItem.dataset.index = index;
 
     const fileName = document.createElement("span");
     fileName.className = "file-name";
@@ -87,8 +90,33 @@ function updateFileList() {
     fileSize.className = "file-size";
     fileSize.textContent = formatFileSize(file.size);
 
+    const orderControls = document.createElement("div");
+    orderControls.className = "file-order-controls";
+
+    const moveUpBtn = document.createElement("button");
+    moveUpBtn.className = "move-file-btn";
+    moveUpBtn.type = "button";
+    moveUpBtn.textContent = "↑";
+    moveUpBtn.title = `Mover ${file.name} para cima`;
+    moveUpBtn.setAttribute("aria-label", moveUpBtn.title);
+    moveUpBtn.disabled = index === 0;
+    moveUpBtn.onclick = () => moveFile(index, -1);
+
+    const moveDownBtn = document.createElement("button");
+    moveDownBtn.className = "move-file-btn";
+    moveDownBtn.type = "button";
+    moveDownBtn.textContent = "↓";
+    moveDownBtn.title = `Mover ${file.name} para baixo`;
+    moveDownBtn.setAttribute("aria-label", moveDownBtn.title);
+    moveDownBtn.disabled = index === selectedFiles.length - 1;
+    moveDownBtn.onclick = () => moveFile(index, 1);
+
+    orderControls.appendChild(moveUpBtn);
+    orderControls.appendChild(moveDownBtn);
+
     const removeBtn = document.createElement("button");
     removeBtn.className = "remove-btn";
+    removeBtn.type = "button";
     removeBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/>
     <line x1="10" y1="11" x2="10" y2="17"/>
@@ -98,12 +126,78 @@ function updateFileList() {
 
     fileItem.appendChild(fileName);
     fileItem.appendChild(fileSize);
+    fileItem.appendChild(orderControls);
     fileItem.appendChild(removeBtn);
     fileList.appendChild(fileItem);
   });
 
   clearBtn.style.display = selectedFiles.length > 0 ? "block" : "none";
 }
+
+function moveFile(index, offset) {
+  const destination = index + offset;
+  if (destination < 0 || destination >= selectedFiles.length) return;
+
+  [selectedFiles[index], selectedFiles[destination]] = [
+    selectedFiles[destination],
+    selectedFiles[index],
+  ];
+  updateFileList();
+}
+
+let draggedFileIndex = null;
+
+fileList.addEventListener("dragstart", (event) => {
+  const fileItem = event.target.closest(".file-item");
+  if (!fileItem) return;
+
+  draggedFileIndex = Number(fileItem.dataset.index);
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", String(draggedFileIndex));
+  fileItem.classList.add("dragging");
+});
+
+fileList.addEventListener("dragover", (event) => {
+  const targetItem = event.target.closest(".file-item");
+  if (!targetItem || draggedFileIndex === null) return;
+
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+  fileList
+    .querySelectorAll(".drag-before, .drag-after")
+    .forEach((item) => item.classList.remove("drag-before", "drag-after"));
+
+  const after =
+    event.clientY >
+    targetItem.getBoundingClientRect().top + targetItem.offsetHeight / 2;
+  targetItem.classList.add(after ? "drag-after" : "drag-before");
+});
+
+fileList.addEventListener("drop", (event) => {
+  const targetItem = event.target.closest(".file-item");
+  if (!targetItem || draggedFileIndex === null) return;
+
+  event.preventDefault();
+  const targetIndex = Number(targetItem.dataset.index);
+  const after =
+    event.clientY >
+    targetItem.getBoundingClientRect().top + targetItem.offsetHeight / 2;
+  let destination = targetIndex + (after ? 1 : 0);
+  if (destination > draggedFileIndex) destination--;
+
+  if (destination !== draggedFileIndex) {
+    const [file] = selectedFiles.splice(draggedFileIndex, 1);
+    selectedFiles.splice(destination, 0, file);
+    updateFileList();
+  }
+});
+
+fileList.addEventListener("dragend", () => {
+  draggedFileIndex = null;
+  fileList
+    .querySelectorAll(".dragging, .drag-before, .drag-after")
+    .forEach((item) => item.classList.remove("dragging", "drag-before", "drag-after"));
+});
 
 function removeFile(index) {
   selectedFiles.splice(index, 1);

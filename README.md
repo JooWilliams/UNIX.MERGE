@@ -25,7 +25,7 @@ Aplicação web simples e moderna para mesclar arquivos PDF e converter imagens 
    - Arraste e solte os arquivos PDF diretamente na área
 
 3. **Organize os arquivos**
-   - Os arquivos serão mesclados na ordem em que foram adicionados
+   - Arraste os arquivos ou use as setas para escolher a ordem da mesclagem
    - Você pode remover arquivos clicando no botão ✕
 
 4. **Clique em "Juntar PDFs"**

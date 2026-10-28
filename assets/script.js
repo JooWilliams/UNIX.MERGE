@@ -10,6 +10,16 @@ const clearBtn = document.getElementById("clearBtn");
 const progressContainer = document.getElementById("progressContainer");
 const progressFill = document.getElementById("progressFill");
 const message = document.getElementById("message");
+const converterDialog = document.getElementById("converterDialog");
+const openConverterBtn = document.getElementById("openConverterBtn");
+const closeConverterBtn = document.getElementById("closeConverterBtn");
+const cancelConverterBtn = document.getElementById("cancelConverterBtn");
+const imageInput = document.getElementById("imageInput");
+const selectedImages = document.getElementById("selectedImages");
+const converterMessage = document.getElementById("converterMessage");
+const convertBtn = document.getElementById("convertBtn");
+let selectedImagesFiles = [];
+let isConvertingImages = false;
 
 // Click para abrir seletor de arquivos
 uploadArea.addEventListener("click", () => fileInput.click());
@@ -188,4 +198,155 @@ function showMessage(text, type) {
 
 function hideMessage() {
   message.style.display = "none";
+}
+
+openConverterBtn.addEventListener("click", () => {
+  selectedImagesFiles = [];
+  imageInput.value = "";
+  updateSelectedImages();
+  hideConverterMessage();
+  converterDialog.showModal();
+});
+
+closeConverterBtn.addEventListener("click", closeConverterDialog);
+cancelConverterBtn.addEventListener("click", closeConverterDialog);
+
+converterDialog.addEventListener("cancel", (event) => {
+  if (isConvertingImages) event.preventDefault();
+});
+
+imageInput.addEventListener("change", () => {
+  selectedImagesFiles = Array.from(imageInput.files).filter((file) =>
+    file.type.startsWith("image/"),
+  );
+  updateSelectedImages();
+  hideConverterMessage();
+});
+
+convertBtn.addEventListener("click", async () => {
+  if (selectedImagesFiles.length === 0 || isConvertingImages) return;
+
+  setImageConversionState(true);
+  hideConverterMessage();
+  let conversionSucceeded = false;
+
+  try {
+    const pdf = await PDFDocument.create();
+
+    for (const file of selectedImagesFiles) {
+      const { image, width, height } = await embedImage(pdf, file);
+      const page = pdf.addPage([width, height]);
+      page.drawImage(image, { x: 0, y: 0, width, height });
+    }
+
+    const pdfBytes = await pdf.save();
+    downloadPdf(pdfBytes, "imagens.pdf");
+    conversionSucceeded = true;
+  } catch (error) {
+    console.error("Erro ao converter imagens para PDF:", error);
+    showConverterMessage(
+      "Não foi possível converter as imagens. Verifique os arquivos e tente novamente.",
+    );
+  } finally {
+    setImageConversionState(false);
+    if (conversionSucceeded) closeConverterDialog();
+  }
+});
+
+function updateSelectedImages() {
+  const count = selectedImagesFiles.length;
+  selectedImages.textContent =
+    count === 0
+      ? "Nenhuma imagem selecionada"
+      : `${count} ${count === 1 ? "imagem selecionada" : "imagens selecionadas"}: ${selectedImagesFiles
+          .map((file) => file.name)
+          .join(", ")}`;
+  convertBtn.disabled = count === 0 || isConvertingImages;
+}
+
+function setImageConversionState(isConverting) {
+  isConvertingImages = isConverting;
+  convertBtn.disabled = isConverting || selectedImagesFiles.length === 0;
+  convertBtn.textContent = isConverting ? "Convertendo..." : "Converter para PDF";
+  imageInput.disabled = isConverting;
+  closeConverterBtn.disabled = isConverting;
+  cancelConverterBtn.disabled = isConverting;
+  if (isConverting) {
+    converterMessage.textContent = "Processando imagens...";
+    converterMessage.classList.add("visible", "processing");
+  } else if (converterMessage.classList.contains("processing")) {
+    hideConverterMessage();
+  }
+}
+
+function closeConverterDialog() {
+  if (isConvertingImages) return;
+  converterDialog.close();
+}
+
+function showConverterMessage(text) {
+  converterMessage.textContent = text;
+  converterMessage.classList.add("visible");
+  converterMessage.classList.remove("processing");
+}
+
+function hideConverterMessage() {
+  converterMessage.textContent = "";
+  converterMessage.classList.remove("visible", "processing");
+}
+
+async function embedImage(pdf, file) {
+  const bytes = await file.arrayBuffer();
+
+  if (file.type === "image/png") {
+    const image = await pdf.embedPng(bytes);
+    return { image, width: image.width, height: image.height };
+  }
+
+  if (file.type === "image/jpeg") {
+    const image = await pdf.embedJpg(bytes);
+    return { image, width: image.width, height: image.height };
+  }
+
+  const imageElement = await loadImage(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = imageElement.naturalWidth;
+  canvas.height = imageElement.naturalHeight;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Não foi possível preparar a imagem.");
+  context.drawImage(imageElement, 0, 0);
+
+  const pngBlob = await new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error("Não foi possível processar a imagem."));
+    }, "image/png");
+  });
+  const image = await pdf.embedPng(await pngBlob.arrayBuffer());
+  return { image, width: image.width, height: image.height };
+}
+
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error(`Não foi possível abrir a imagem ${file.name}.`));
+    };
+    image.src = objectUrl;
+  });
+}
+
+function downloadPdf(pdfBytes, fileName) {
+  const url = URL.createObjectURL(new Blob([pdfBytes], { type: "application/pdf" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

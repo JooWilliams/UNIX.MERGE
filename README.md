@@ -1,6 +1,6 @@
 # 📄 PDF Merger - Juntar PDFs
 
-Aplicação web simples e moderna para mesclar múltiplos arquivos PDF em um único documento.
+Aplicação web simples e moderna para mesclar arquivos PDF e converter imagens em PDF.
 
 ## 🚀 Características
 
@@ -10,12 +10,13 @@ Aplicação web simples e moderna para mesclar múltiplos arquivos PDF em um ún
 - 📊 Barra de progresso durante o merge
 - ✅ Validação de arquivos
 - 💾 Download automático do PDF mesclado
+- 🖼️ Conversão de uma ou mais imagens em um PDF com várias páginas
 - 🎨 Design responsivo e bonito
 - 🌐 Funciona 100% no navegador (sem necessidade de servidor)
 
 ## 📋 Como Usar
 
-1. **Abra o arquivo `mergeDoc.html` no seu navegador**
+1. **Abra o arquivo `index.html` no seu navegador**
    - Basta dar duplo clique no arquivo
    - Ou arrastar o arquivo para o navegador
 
@@ -31,6 +32,11 @@ Aplicação web simples e moderna para mesclar múltiplos arquivos PDF em um ún
    - O processo de merge será iniciado
    - Uma barra de progresso mostrará o andamento
    - O arquivo mesclado será baixado automaticamente como `merged_document.pdf`
+
+5. **Converta imagens para PDF**
+   - Clique em "Converter imagem" no card lateral
+   - Escolha uma ou mais imagens no popup
+   - Clique em "Converter para PDF" para baixar `imagens.pdf`
 
 ## 🛠️ Tecnologias Utilizadas
 

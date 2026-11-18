@@ -11,6 +11,8 @@ Aplicação web simples e moderna para mesclar arquivos PDF e converter imagens 
 - ✅ Validação de arquivos
 - 💾 Download automático do PDF mesclado
 - 🖼️ Conversão de uma ou mais imagens em um PDF com várias páginas
+- ✂️ Separação de PDF em páginas individuais ou por intervalos personalizados
+- 🖼️ Miniaturas das páginas para selecionar visualmente o que será separado
 - 🎨 Design responsivo e bonito
 - 🌐 Funciona 100% no navegador (sem necessidade de servidor)
 

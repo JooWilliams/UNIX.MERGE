@@ -20,6 +20,20 @@ const converterMessage = document.getElementById("converterMessage");
 const convertBtn = document.getElementById("convertBtn");
 let selectedImagesFiles = [];
 let isConvertingImages = false;
+const splitterDialog = document.getElementById("splitterDialog");
+const openSplitterBtn = document.getElementById("openSplitterBtn");
+const closeSplitterBtn = document.getElementById("closeSplitterBtn");
+const cancelSplitterBtn = document.getElementById("cancelSplitterBtn");
+const splitPdfInput = document.getElementById("splitPdfInput");
+const selectedSplitPdf = document.getElementById("selectedSplitPdf");
+const pageRangeInput = document.getElementById("pageRangeInput");
+const splitterMessage = document.getElementById("splitterMessage");
+const splitBtn = document.getElementById("splitBtn");
+const splitPreview = document.getElementById("splitPreview");
+let selectedSplitFile = null;
+let splitPdfPageCount = 0;
+let isSplittingPdf = false;
+let selectedPageNumbers = new Set();
 
 // Click para abrir seletor de arquivos
 uploadArea.addEventListener("click", () => fileInput.click());
@@ -196,7 +210,9 @@ fileList.addEventListener("dragend", () => {
   draggedFileIndex = null;
   fileList
     .querySelectorAll(".dragging, .drag-before, .drag-after")
-    .forEach((item) => item.classList.remove("dragging", "drag-before", "drag-after"));
+    .forEach((item) =>
+      item.classList.remove("dragging", "drag-before", "drag-after"),
+    );
 });
 
 function removeFile(index) {
@@ -361,7 +377,9 @@ function updateSelectedImages() {
 function setImageConversionState(isConverting) {
   isConvertingImages = isConverting;
   convertBtn.disabled = isConverting || selectedImagesFiles.length === 0;
-  convertBtn.textContent = isConverting ? "Convertendo..." : "Converter para PDF";
+  convertBtn.textContent = isConverting
+    ? "Convertendo..."
+    : "Converter para PDF";
   imageInput.disabled = isConverting;
   closeConverterBtn.disabled = isConverting;
   cancelConverterBtn.disabled = isConverting;
@@ -437,10 +455,294 @@ function loadImage(file) {
 }
 
 function downloadPdf(pdfBytes, fileName) {
-  const url = URL.createObjectURL(new Blob([pdfBytes], { type: "application/pdf" }));
+  const url = URL.createObjectURL(
+    new Blob([pdfBytes], { type: "application/pdf" }),
+  );
   const link = document.createElement("a");
   link.href = url;
   link.download = fileName;
   link.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function downloadFile(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+openSplitterBtn.addEventListener("click", () => {
+  selectedSplitFile = null;
+  splitPdfPageCount = 0;
+  selectedPageNumbers.clear();
+  splitPreview.innerHTML = "";
+  splitPdfInput.value = "";
+  pageRangeInput.value = "";
+  updateSelectedSplitPdf();
+  hideSplitterMessage();
+  splitterDialog.showModal();
+});
+
+closeSplitterBtn.addEventListener("click", closeSplitterDialog);
+cancelSplitterBtn.addEventListener("click", closeSplitterDialog);
+
+splitterDialog.addEventListener("cancel", (event) => {
+  if (isSplittingPdf) event.preventDefault();
+});
+
+splitPdfInput.addEventListener("change", async () => {
+  const file = Array.from(splitPdfInput.files).find(
+    (item) =>
+      item.type === "application/pdf" ||
+      item.name.toLowerCase().endsWith(".pdf"),
+  );
+
+  if (!file) {
+    selectedSplitFile = null;
+    splitPdfPageCount = 0;
+    updateSelectedSplitPdf();
+    showSplitterMessage("Selecione um arquivo PDF válido.");
+    return;
+  }
+
+  if (file.size > 50 * 1024 * 1024) {
+    selectedSplitFile = null;
+    splitPdfPageCount = 0;
+    updateSelectedSplitPdf();
+    showSplitterMessage("O PDF excede o limite de 50MB.");
+    return;
+  }
+
+  try {
+    const pdf = await PDFDocument.load(await file.arrayBuffer());
+    selectedSplitFile = file;
+    splitPdfPageCount = pdf.getPageCount();
+    selectedPageNumbers.clear();
+    pageRangeInput.value = "";
+    await renderPdfThumbnails(file);
+    hideSplitterMessage();
+  } catch (error) {
+    console.error("Erro ao abrir PDF para separação:", error);
+    selectedSplitFile = null;
+    splitPdfPageCount = 0;
+    showSplitterMessage(
+      "Não foi possível abrir este PDF. Verifique se ele não está protegido.",
+    );
+  }
+
+  updateSelectedSplitPdf();
+});
+
+async function renderPdfThumbnails(file) {
+  splitPreview.innerHTML = "";
+
+  if (typeof pdfjsLib === "undefined") {
+    throw new Error("O visualizador de páginas não foi carregado.");
+  }
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+  const pdf = await pdfjsLib.getDocument({
+    data: new Uint8Array(await file.arrayBuffer()),
+  }).promise;
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+    const page = await pdf.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 0.32 });
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    await page.render({ canvasContext: context, viewport }).promise;
+
+    const thumbnail = document.createElement("button");
+    thumbnail.type = "button";
+    thumbnail.className = "page-thumbnail";
+    thumbnail.dataset.page = pageNumber;
+    thumbnail.setAttribute("aria-label", `Selecionar página ${pageNumber}`);
+    thumbnail.title = `Página ${pageNumber}`;
+    thumbnail.appendChild(canvas);
+
+    const label = document.createElement("span");
+    label.textContent = `Página ${pageNumber}`;
+    thumbnail.appendChild(label);
+    thumbnail.addEventListener("click", () => togglePageThumbnail(pageNumber));
+    splitPreview.appendChild(thumbnail);
+  }
+}
+
+function togglePageThumbnail(pageNumber) {
+  if (selectedPageNumbers.has(pageNumber)) {
+    selectedPageNumbers.delete(pageNumber);
+  } else {
+    selectedPageNumbers.add(pageNumber);
+  }
+
+  pageRangeInput.value = Array.from(selectedPageNumbers)
+    .sort((a, b) => a - b)
+    .join(", ");
+  syncThumbnailSelection();
+}
+
+function syncThumbnailSelection() {
+  splitPreview.querySelectorAll(".page-thumbnail").forEach((thumbnail) => {
+    const pageNumber = Number(thumbnail.dataset.page);
+    const isSelected = selectedPageNumbers.has(pageNumber);
+    thumbnail.classList.toggle("selected", isSelected);
+    thumbnail.setAttribute("aria-pressed", String(isSelected));
+  });
+}
+
+pageRangeInput.addEventListener("input", () => {
+  const groups = parsePageRanges(pageRangeInput.value, splitPdfPageCount);
+  selectedPageNumbers.clear();
+  if (groups) {
+    groups.flat().forEach((pageNumber) => selectedPageNumbers.add(pageNumber));
+  } else if (pageRangeInput.value.trim()) {
+    selectedPageNumbers.clear();
+  }
+  syncThumbnailSelection();
+});
+
+function updateSelectedSplitPdf() {
+  if (!selectedSplitFile) {
+    selectedSplitPdf.textContent = "Nenhum PDF selecionado";
+  } else {
+    selectedSplitPdf.textContent =
+      `${selectedSplitFile.name} • ${splitPdfPageCount} ` +
+      (splitPdfPageCount === 1 ? "página" : "páginas");
+  }
+  splitBtn.disabled = !selectedSplitFile || isSplittingPdf;
+}
+
+splitBtn.addEventListener("click", async () => {
+  if (!selectedSplitFile || isSplittingPdf) return;
+
+  hideSplitterMessage();
+  const groups = parsePageRanges(pageRangeInput.value, splitPdfPageCount);
+  if (!groups) {
+    showSplitterMessage(
+      `Informe páginas válidas entre 1 e ${splitPdfPageCount}, por exemplo: 1-3, 5, 8-10.`,
+    );
+    return;
+  }
+
+  setSplitterState(true);
+
+  try {
+    const sourcePdf = await PDFDocument.load(
+      await selectedSplitFile.arrayBuffer(),
+    );
+    const zip = typeof JSZip === "undefined" ? null : new JSZip();
+    if (!zip) throw new Error("O serviço de compactação não foi carregado.");
+
+    const baseName =
+      selectedSplitFile.name.replace(/\.pdf$/i, "") || "documento";
+
+    if (!pageRangeInput.value.trim()) {
+      for (let pageIndex = 0; pageIndex < splitPdfPageCount; pageIndex++) {
+        const outputPdf = await PDFDocument.create();
+        const [page] = await outputPdf.copyPages(sourcePdf, [pageIndex]);
+        outputPdf.addPage(page);
+        zip.file(
+          `${baseName}_pagina_${String(pageIndex + 1).padStart(3, "0")}.pdf`,
+          await outputPdf.save(),
+        );
+      }
+    } else {
+      for (let index = 0; index < groups.length; index++) {
+        const pageIndices = groups[index].map((pageNumber) => pageNumber - 1);
+        const outputPdf = await PDFDocument.create();
+        const pages = await outputPdf.copyPages(sourcePdf, pageIndices);
+        pages.forEach((page) => outputPdf.addPage(page));
+
+        const rangeName =
+          groups[index].length === 1
+            ? `pagina_${String(groups[index][0]).padStart(3, "0")}`
+            : `paginas_${String(groups[index][0]).padStart(3, "0")}-${String(
+                groups[index][groups[index].length - 1],
+              ).padStart(3, "0")}`;
+        zip.file(`${baseName}_${rangeName}.pdf`, await outputPdf.save());
+      }
+    }
+
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    downloadFile(zipBlob, `${baseName}_separado.zip`);
+    closeSplitterDialog();
+  } catch (error) {
+    console.error("Erro ao separar PDF:", error);
+    showSplitterMessage(
+      "Não foi possível separar este PDF. Verifique os intervalos e tente novamente.",
+    );
+  } finally {
+    setSplitterState(false);
+  }
+});
+
+function parsePageRanges(value, pageCount) {
+  if (!value.trim()) {
+    return Array.from({ length: pageCount }, (_, index) => [index + 1]);
+  }
+
+  const ranges = value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (ranges.length === 0) return null;
+
+  const groups = [];
+  for (const range of ranges) {
+    if (/^\d+$/.test(range)) {
+      const page = Number(range);
+      if (page < 1 || page > pageCount) return null;
+      groups.push([page]);
+      continue;
+    }
+
+    const match = range.match(/^(\d+)\s*-\s*(\d+)$/);
+    if (!match) return null;
+    const start = Number(match[1]);
+    const end = Number(match[2]);
+    if (start < 1 || end < start || end > pageCount) return null;
+    const pages = [];
+    for (let page = start; page <= end; page++) pages.push(page);
+    groups.push(pages);
+  }
+  return groups;
+}
+
+function setSplitterState(isSplitting) {
+  isSplittingPdf = isSplitting;
+  splitBtn.disabled = isSplitting || !selectedSplitFile;
+  splitBtn.textContent = isSplitting ? "Separando..." : "Separar PDF";
+  splitPdfInput.disabled = isSplitting;
+  pageRangeInput.disabled = isSplitting;
+  closeSplitterBtn.disabled = isSplitting;
+  cancelSplitterBtn.disabled = isSplitting;
+  if (isSplitting) {
+    splitterMessage.textContent = "Processando páginas...";
+    splitterMessage.classList.add("visible", "processing");
+  } else if (splitterMessage.classList.contains("processing")) {
+    hideSplitterMessage();
+  }
+}
+
+function closeSplitterDialog() {
+  if (isSplittingPdf) return;
+  splitterDialog.close();
+}
+
+function showSplitterMessage(text) {
+  splitterMessage.textContent = text;
+  splitterMessage.classList.add("visible");
+  splitterMessage.classList.remove("processing");
+}
+
+function hideSplitterMessage() {
+  splitterMessage.textContent = "";
+  splitterMessage.classList.remove("visible", "processing");
 }

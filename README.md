@@ -73,6 +73,7 @@ Todos os arquivos são processados localmente no seu navegador. Nenhum arquivo �
 **Erro ao processar PDF:**
 - Alguns PDFs protegidos por senha podem não funcionar
 - PDFs corrompidos não podem ser mesclados
+- Confirme se todos os arquivos selecionados têm conteúdo PDF válido; renomear outro tipo de arquivo para `.pdf` não o converte em PDF
 
 ## 📄 Licença
 

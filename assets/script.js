@@ -63,10 +63,7 @@ function preventDefaults(e) {
 
 // Drop de arquivos
 uploadArea.addEventListener("drop", (e) => {
-  const files = Array.from(e.dataTransfer.files).filter(
-    (file) => file.type === "application/pdf",
-  );
-  addFiles(files);
+  addFiles(Array.from(e.dataTransfer.files));
 });
 
 // Seleção de arquivos
@@ -77,9 +74,27 @@ fileInput.addEventListener("change", (e) => {
 });
 
 function addFiles(files) {
-  selectedFiles = [...selectedFiles, ...files];
+  const pdfFiles = files.filter(isPdfFile);
+  const rejectedFiles = files.filter((file) => !isPdfFile(file));
+
+  if (rejectedFiles.length > 0) {
+    showMessage(
+      `Selecione apenas arquivos PDF. Arquivos ignorados: ${rejectedFiles
+        .map((file) => file.name)
+        .join(", ")}`,
+      "error",
+    );
+  }
+
+  selectedFiles = [...selectedFiles, ...pdfFiles];
   updateFileList();
   updateMergeButton();
+}
+
+function isPdfFile(file) {
+  return (
+    file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+  );
 }
 
 function updateFileList() {
@@ -262,7 +277,14 @@ mergeBtn.addEventListener("click", async () => {
       updateProgress(progress);
 
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await PDFDocument.load(arrayBuffer);
+      let pdf;
+      try {
+        pdf = await PDFDocument.load(arrayBuffer);
+      } catch (error) {
+        throw new Error(
+          `O arquivo "${file.name}" não contém um PDF válido ou está corrompido. Verifique o arquivo e tente novamente. (${error.message})`,
+        );
+      }
       const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
 
       copiedPages.forEach((page) => {

@@ -11,9 +11,17 @@ const fileList = document.getElementById("fileList");
 const documentActions = document.getElementById("documentActions");
 const mergeBtn = document.getElementById("mergeBtn");
 const clearBtn = document.getElementById("clearBtn");
+const selectFilesBtn = document.getElementById("selectFilesBtn");
 const progressContainer = document.getElementById("progressContainer");
 const progressFill = document.getElementById("progressFill");
 const message = document.getElementById("message");
+const toolTabs = Array.from(document.querySelectorAll(".tool-tab"));
+const toolViews = {
+  merge: document.getElementById("mergeView"),
+  splitter: document.getElementById("splitterView"),
+  converter: document.getElementById("converterView"),
+};
+let activeTool = "merge";
 const pageRotationDialog = document.getElementById("pageRotationDialog");
 const pageRotationTitle = document.getElementById("pageRotationTitle");
 const pageRotationSummary = document.getElementById("pageRotationSummary");
@@ -23,20 +31,14 @@ const closePageRotationBtn = document.getElementById("closePageRotationBtn");
 const donePageRotationBtn = document.getElementById("donePageRotationBtn");
 let activePageRotationPdf = null;
 let pageRotationRequest = 0;
-const converterDialog = document.getElementById("converterDialog");
-const openConverterBtn = document.getElementById("openConverterBtn");
-const closeConverterBtn = document.getElementById("closeConverterBtn");
-const cancelConverterBtn = document.getElementById("cancelConverterBtn");
 const imageInput = document.getElementById("imageInput");
 const selectedImages = document.getElementById("selectedImages");
+const imagePreview = document.getElementById("imagePreview");
 const converterMessage = document.getElementById("converterMessage");
 const convertBtn = document.getElementById("convertBtn");
 let selectedImagesFiles = [];
+const imageRotations = new WeakMap();
 let isConvertingImages = false;
-const splitterDialog = document.getElementById("splitterDialog");
-const openSplitterBtn = document.getElementById("openSplitterBtn");
-const closeSplitterBtn = document.getElementById("closeSplitterBtn");
-const cancelSplitterBtn = document.getElementById("cancelSplitterBtn");
 const splitPdfInput = document.getElementById("splitPdfInput");
 const selectedSplitPdf = document.getElementById("selectedSplitPdf");
 const pageRangeInput = document.getElementById("pageRangeInput");
@@ -45,11 +47,68 @@ const splitBtn = document.getElementById("splitBtn");
 const splitPreview = document.getElementById("splitPreview");
 let selectedSplitFile = null;
 let splitPdfPageCount = 0;
+let splitPreviewRequest = 0;
 let isSplittingPdf = false;
 let selectedPageNumbers = new Set();
+const splitPageRotations = new Map();
+
+toolTabs.forEach((tab) => {
+  tab.addEventListener("click", () => selectTool(tab.dataset.tool));
+});
 
 // Click para abrir seletor de arquivos
 uploadArea.addEventListener("click", () => fileInput.click());
+selectFilesBtn.addEventListener("click", (event) => {
+  event.stopPropagation();
+  fileInput.click();
+});
+
+function selectTool(tool) {
+  if (!toolViews[tool] || isConvertingImages || isSplittingPdf) return;
+
+  const toolChanged = activeTool !== tool;
+  if (activeTool === "splitter" && tool !== "splitter") {
+    splitPreviewRequest++;
+  }
+  activeTool = tool;
+
+  toolTabs.forEach((tab) => {
+    const isActive = tab.dataset.tool === tool;
+    tab.classList.toggle("active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+  });
+  Object.entries(toolViews).forEach(([name, view]) => {
+    view.hidden = name !== tool;
+  });
+
+  if (!toolChanged) return;
+
+  if (tool === "converter") {
+    selectedImagesFiles = [];
+    imageInput.value = "";
+    updateSelectedImages();
+    hideConverterMessage();
+  }
+
+  if (tool === "splitter") {
+    selectedSplitFile = null;
+    splitPdfPageCount = 0;
+    selectedPageNumbers.clear();
+    splitPageRotations.clear();
+    splitPreviewRequest++;
+    splitPreview.innerHTML = "";
+    splitPdfInput.value = "";
+    pageRangeInput.value = "";
+    updateSelectedSplitPdf();
+    hideSplitterMessage();
+  }
+}
+
+function setToolTabsDisabled(disabled) {
+  toolTabs.forEach((tab) => {
+    tab.disabled = disabled;
+  });
+}
 
 // Prevenir comportamento padrão de drag
 ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
@@ -682,21 +741,6 @@ function hideMessage() {
   message.style.display = "none";
 }
 
-openConverterBtn.addEventListener("click", () => {
-  selectedImagesFiles = [];
-  imageInput.value = "";
-  updateSelectedImages();
-  hideConverterMessage();
-  converterDialog.showModal();
-});
-
-closeConverterBtn.addEventListener("click", closeConverterDialog);
-cancelConverterBtn.addEventListener("click", closeConverterDialog);
-
-converterDialog.addEventListener("cancel", (event) => {
-  if (isConvertingImages) event.preventDefault();
-});
-
 imageInput.addEventListener("change", () => {
   selectedImagesFiles = Array.from(imageInput.files).filter((file) =>
     file.type.startsWith("image/"),
@@ -710,20 +754,37 @@ convertBtn.addEventListener("click", async () => {
 
   setImageConversionState(true);
   hideConverterMessage();
-  let conversionSucceeded = false;
 
   try {
     const pdf = await PDFDocument.create();
 
     for (const file of selectedImagesFiles) {
       const { image, width, height } = await embedImage(pdf, file);
-      const page = pdf.addPage([width, height]);
-      page.drawImage(image, { x: 0, y: 0, width, height });
+      const rotation = imageRotations.get(file) || 0;
+      const pageWidth = rotation % 180 === 0 ? width : height;
+      const pageHeight = rotation % 180 === 0 ? height : width;
+      const drawingRotation = (360 - rotation) % 360;
+      let x = 0;
+      let y = 0;
+      if (drawingRotation === 90) x = height;
+      if (drawingRotation === 180) {
+        x = width;
+        y = height;
+      }
+      if (drawingRotation === 270) y = width;
+      const page = pdf.addPage([pageWidth, pageHeight]);
+      page.drawImage(image, {
+        x,
+        y,
+        width,
+        height,
+        rotate: degrees(drawingRotation),
+      });
     }
 
     const pdfBytes = await pdf.save();
     downloadPdf(pdfBytes, "imagens.pdf");
-    conversionSucceeded = true;
+    showConverterMessage("PDF convertido. O download foi iniciado.", "success");
   } catch (error) {
     console.error("Erro ao converter imagens para PDF:", error);
     showConverterMessage(
@@ -731,7 +792,6 @@ convertBtn.addEventListener("click", async () => {
     );
   } finally {
     setImageConversionState(false);
-    if (conversionSucceeded) closeConverterDialog();
   }
 });
 
@@ -744,6 +804,68 @@ function updateSelectedImages() {
           .map((file) => file.name)
           .join(", ")}`;
   convertBtn.disabled = count === 0 || isConvertingImages;
+  renderSelectedImagePreviews();
+}
+
+function renderSelectedImagePreviews() {
+  imagePreview.innerHTML = "";
+
+  selectedImagesFiles.forEach((file) => {
+    const card = document.createElement("article");
+    card.className = "image-preview-card";
+
+    const imageContainer = document.createElement("div");
+    imageContainer.className = "image-preview-thumbnail";
+
+    const image = document.createElement("img");
+    image.alt = `Prévia de ${file.name}`;
+    image.style.transform = `rotate(${imageRotations.get(file) || 0}deg)`;
+    const objectUrl = URL.createObjectURL(file);
+    image.onload = () => URL.revokeObjectURL(objectUrl);
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      console.error(`Não foi possível gerar a miniatura de "${file.name}".`);
+      imageContainer.textContent = "Prévia indisponível";
+    };
+    image.src = objectUrl;
+    imageContainer.appendChild(image);
+
+    const fileName = document.createElement("span");
+    fileName.className = "image-preview-name";
+    fileName.textContent = file.name;
+    fileName.title = file.name;
+
+    const rotationLabel = document.createElement("span");
+    rotationLabel.className = "image-preview-angle";
+    rotationLabel.textContent = `Rotação: ${imageRotations.get(file) || 0}°`;
+
+    const controls = document.createElement("div");
+    controls.className = "image-rotation-controls";
+    [-90, 90].forEach((offset) => {
+      const button = document.createElement("button");
+      const direction = offset < 0 ? "esquerda" : "direita";
+      button.className = "image-rotate-btn";
+      button.type = "button";
+      button.textContent = offset < 0 ? "↶" : "↻";
+      button.title = `Girar ${file.name} 90 graus para a ${direction}`;
+      button.setAttribute("aria-label", button.title);
+      button.disabled = isConvertingImages;
+      button.addEventListener("click", () => {
+        const rotation =
+          ((imageRotations.get(file) || 0) + offset + 360) % 360;
+        imageRotations.set(file, rotation);
+        image.style.transform = `rotate(${rotation}deg)`;
+        rotationLabel.textContent = `Rotação: ${rotation}°`;
+      });
+      controls.appendChild(button);
+    });
+
+    card.appendChild(imageContainer);
+    card.appendChild(fileName);
+    card.appendChild(rotationLabel);
+    card.appendChild(controls);
+    imagePreview.appendChild(card);
+  });
 }
 
 function setImageConversionState(isConverting) {
@@ -753,8 +875,10 @@ function setImageConversionState(isConverting) {
     ? "Convertendo..."
     : "Converter para PDF";
   imageInput.disabled = isConverting;
-  closeConverterBtn.disabled = isConverting;
-  cancelConverterBtn.disabled = isConverting;
+  imagePreview.querySelectorAll("button").forEach((button) => {
+    button.disabled = isConverting;
+  });
+  setToolTabsDisabled(isConverting);
   if (isConverting) {
     converterMessage.textContent = "Processando imagens...";
     converterMessage.classList.add("visible", "processing");
@@ -763,20 +887,16 @@ function setImageConversionState(isConverting) {
   }
 }
 
-function closeConverterDialog() {
-  if (isConvertingImages) return;
-  converterDialog.close();
-}
-
-function showConverterMessage(text) {
+function showConverterMessage(text, type = "error") {
   converterMessage.textContent = text;
   converterMessage.classList.add("visible");
+  converterMessage.classList.toggle("success", type === "success");
   converterMessage.classList.remove("processing");
 }
 
 function hideConverterMessage() {
   converterMessage.textContent = "";
-  converterMessage.classList.remove("visible", "processing");
+  converterMessage.classList.remove("visible", "processing", "success");
 }
 
 async function embedImage(pdf, file) {
@@ -846,26 +966,17 @@ function downloadFile(blob, fileName) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-openSplitterBtn.addEventListener("click", () => {
-  selectedSplitFile = null;
-  splitPdfPageCount = 0;
+splitPdfInput.addEventListener("change", async () => {
+  const request = ++splitPreviewRequest;
+  splitPageRotations.clear();
   selectedPageNumbers.clear();
   splitPreview.innerHTML = "";
-  splitPdfInput.value = "";
   pageRangeInput.value = "";
+  selectedSplitFile = null;
+  splitPdfPageCount = 0;
   updateSelectedSplitPdf();
   hideSplitterMessage();
-  splitterDialog.showModal();
-});
 
-closeSplitterBtn.addEventListener("click", closeSplitterDialog);
-cancelSplitterBtn.addEventListener("click", closeSplitterDialog);
-
-splitterDialog.addEventListener("cancel", (event) => {
-  if (isSplittingPdf) event.preventDefault();
-});
-
-splitPdfInput.addEventListener("change", async () => {
   const file = Array.from(splitPdfInput.files).find(
     (item) =>
       item.type === "application/pdf" ||
@@ -873,31 +984,27 @@ splitPdfInput.addEventListener("change", async () => {
   );
 
   if (!file) {
-    selectedSplitFile = null;
-    splitPdfPageCount = 0;
-    updateSelectedSplitPdf();
     showSplitterMessage("Selecione um arquivo PDF válido.");
     return;
   }
 
   if (file.size > 50 * 1024 * 1024) {
-    selectedSplitFile = null;
-    splitPdfPageCount = 0;
-    updateSelectedSplitPdf();
     showSplitterMessage("O PDF excede o limite de 50MB.");
     return;
   }
 
   try {
     const pdf = await PDFDocument.load(await file.arrayBuffer());
+    if (request !== splitPreviewRequest) return;
     selectedSplitFile = file;
     splitPdfPageCount = pdf.getPageCount();
-    selectedPageNumbers.clear();
     pageRangeInput.value = "";
-    await renderPdfThumbnails(file);
+    await renderPdfThumbnails(file, request);
+    if (request !== splitPreviewRequest) return;
     hideSplitterMessage();
   } catch (error) {
     console.error("Erro ao abrir PDF para separação:", error);
+    if (request !== splitPreviewRequest) return;
     selectedSplitFile = null;
     splitPdfPageCount = 0;
     showSplitterMessage(
@@ -908,42 +1015,102 @@ splitPdfInput.addEventListener("change", async () => {
   updateSelectedSplitPdf();
 });
 
-async function renderPdfThumbnails(file) {
-  splitPreview.innerHTML = "";
+async function renderPdfThumbnails(file, request) {
+  const pdf = await loadPdfJsDocument(file);
 
-  if (typeof pdfjsLib === "undefined") {
-    throw new Error("O visualizador de páginas não foi carregado.");
-  }
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  try {
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+      if (request !== splitPreviewRequest) return;
 
-  const pdf = await pdfjsLib.getDocument({
-    data: new Uint8Array(await file.arrayBuffer()),
-  }).promise;
+      const page = await pdf.getPage(pageNumber);
+      const card = document.createElement("div");
+      card.className = "page-thumbnail";
+      card.dataset.page = pageNumber;
 
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
-    const page = await pdf.getPage(pageNumber);
-    const viewport = page.getViewport({ scale: 0.32 });
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
+      const selectButton = document.createElement("button");
+      selectButton.type = "button";
+      selectButton.className = "page-selection-btn";
+      selectButton.setAttribute("aria-label", `Selecionar página ${pageNumber}`);
+      selectButton.title = `Página ${pageNumber}`;
 
-    await page.render({ canvasContext: context, viewport }).promise;
+      const canvas = await renderPdfPage(
+        page,
+        splitPageRotations.get(pageNumber - 1) || 0,
+        150,
+      );
+      selectButton.appendChild(canvas);
 
-    const thumbnail = document.createElement("button");
-    thumbnail.type = "button";
-    thumbnail.className = "page-thumbnail";
-    thumbnail.dataset.page = pageNumber;
-    thumbnail.setAttribute("aria-label", `Selecionar página ${pageNumber}`);
-    thumbnail.title = `Página ${pageNumber}`;
-    thumbnail.appendChild(canvas);
+      const label = document.createElement("span");
+      label.textContent = `Página ${pageNumber}`;
+      selectButton.appendChild(label);
+      selectButton.addEventListener("click", () =>
+        togglePageThumbnail(pageNumber),
+      );
 
-    const label = document.createElement("span");
-    label.textContent = `Página ${pageNumber}`;
-    thumbnail.appendChild(label);
-    thumbnail.addEventListener("click", () => togglePageThumbnail(pageNumber));
-    splitPreview.appendChild(thumbnail);
+      const rotationLabel = document.createElement("span");
+      rotationLabel.className = "split-page-angle";
+      rotationLabel.textContent =
+        `Rotação: ${splitPageRotations.get(pageNumber - 1) || 0}°`;
+
+      const controls = document.createElement("div");
+      controls.className = "split-page-controls";
+      let renderVersion = 0;
+
+      const updatePreview = async () => {
+        const currentRender = ++renderVersion;
+        const rotation = splitPageRotations.get(pageNumber - 1) || 0;
+        rotationLabel.textContent = `Rotação: ${rotation}°`;
+        const previewPdf = await loadPdfJsDocument(file);
+        try {
+          if (request !== splitPreviewRequest) return;
+          const previewPage = await previewPdf.getPage(pageNumber);
+          const rotatedCanvas = await renderPdfPage(previewPage, rotation, 150);
+          if (
+            currentRender === renderVersion &&
+            request === splitPreviewRequest
+          ) {
+            selectButton.querySelector("canvas").replaceWith(rotatedCanvas);
+          }
+        } finally {
+          await previewPdf.destroy();
+        }
+      };
+
+      [-90, 90].forEach((offset) => {
+        const button = document.createElement("button");
+        const direction = offset < 0 ? "esquerda" : "direita";
+        button.className = "split-rotate-btn";
+        button.type = "button";
+        button.textContent = offset < 0 ? "↶" : "↻";
+        button.title = `Girar página ${pageNumber} 90 graus para a ${direction}`;
+        button.setAttribute("aria-label", button.title);
+        button.addEventListener("click", () => {
+          const rotation =
+            ((splitPageRotations.get(pageNumber - 1) || 0) +
+              offset +
+              360) %
+            360;
+          splitPageRotations.set(pageNumber - 1, rotation);
+          updatePreview().catch((error) => {
+            console.error(
+              `Erro ao girar a página ${pageNumber} de "${file.name}":`,
+              error,
+            );
+            showSplitterMessage(
+              `Não foi possível atualizar a prévia da página ${pageNumber}.`,
+            );
+          });
+        });
+        controls.appendChild(button);
+      });
+
+      card.appendChild(selectButton);
+      card.appendChild(rotationLabel);
+      card.appendChild(controls);
+      splitPreview.appendChild(card);
+    }
+  } finally {
+    await pdf.destroy();
   }
 }
 
@@ -965,7 +1132,9 @@ function syncThumbnailSelection() {
     const pageNumber = Number(thumbnail.dataset.page);
     const isSelected = selectedPageNumbers.has(pageNumber);
     thumbnail.classList.toggle("selected", isSelected);
-    thumbnail.setAttribute("aria-pressed", String(isSelected));
+    thumbnail
+      .querySelector(".page-selection-btn")
+      .setAttribute("aria-pressed", String(isSelected));
   });
 }
 
@@ -989,6 +1158,15 @@ function updateSelectedSplitPdf() {
       (splitPdfPageCount === 1 ? "página" : "páginas");
   }
   splitBtn.disabled = !selectedSplitFile || isSplittingPdf;
+}
+
+function applySplitPageRotation(page, pageNumber) {
+  const rotation =
+    (page.getRotation().angle +
+      (splitPageRotations.get(pageNumber - 1) || 0) +
+      360) %
+    360;
+  page.setRotation(degrees(rotation));
 }
 
 splitBtn.addEventListener("click", async () => {
@@ -1019,6 +1197,7 @@ splitBtn.addEventListener("click", async () => {
       for (let pageIndex = 0; pageIndex < splitPdfPageCount; pageIndex++) {
         const outputPdf = await PDFDocument.create();
         const [page] = await outputPdf.copyPages(sourcePdf, [pageIndex]);
+        applySplitPageRotation(page, pageIndex + 1);
         outputPdf.addPage(page);
         zip.file(
           `${baseName}_pagina_${String(pageIndex + 1).padStart(3, "0")}.pdf`,
@@ -1030,7 +1209,10 @@ splitBtn.addEventListener("click", async () => {
         const pageIndices = groups[index].map((pageNumber) => pageNumber - 1);
         const outputPdf = await PDFDocument.create();
         const pages = await outputPdf.copyPages(sourcePdf, pageIndices);
-        pages.forEach((page) => outputPdf.addPage(page));
+        pages.forEach((page, pageIndex) => {
+          applySplitPageRotation(page, pageIndices[pageIndex] + 1);
+          outputPdf.addPage(page);
+        });
 
         const rangeName =
           groups[index].length === 1
@@ -1044,7 +1226,7 @@ splitBtn.addEventListener("click", async () => {
 
     const zipBlob = await zip.generateAsync({ type: "blob" });
     downloadFile(zipBlob, `${baseName}_separado.zip`);
-    closeSplitterDialog();
+    showSplitterMessage("PDF separado. O download foi iniciado.", "success");
   } catch (error) {
     console.error("Erro ao separar PDF:", error);
     showSplitterMessage(
@@ -1093,8 +1275,10 @@ function setSplitterState(isSplitting) {
   splitBtn.textContent = isSplitting ? "Separando..." : "Separar PDF";
   splitPdfInput.disabled = isSplitting;
   pageRangeInput.disabled = isSplitting;
-  closeSplitterBtn.disabled = isSplitting;
-  cancelSplitterBtn.disabled = isSplitting;
+  splitPreview.querySelectorAll("button").forEach((button) => {
+    button.disabled = isSplitting;
+  });
+  setToolTabsDisabled(isSplitting);
   if (isSplitting) {
     splitterMessage.textContent = "Processando páginas...";
     splitterMessage.classList.add("visible", "processing");
@@ -1103,18 +1287,14 @@ function setSplitterState(isSplitting) {
   }
 }
 
-function closeSplitterDialog() {
-  if (isSplittingPdf) return;
-  splitterDialog.close();
-}
-
-function showSplitterMessage(text) {
+function showSplitterMessage(text, type = "error") {
   splitterMessage.textContent = text;
   splitterMessage.classList.add("visible");
+  splitterMessage.classList.toggle("success", type === "success");
   splitterMessage.classList.remove("processing");
 }
 
 function hideSplitterMessage() {
   splitterMessage.textContent = "";
-  splitterMessage.classList.remove("visible", "processing");
+  splitterMessage.classList.remove("visible", "processing", "success");
 }

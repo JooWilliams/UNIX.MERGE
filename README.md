@@ -5,14 +5,17 @@ Aplicação web simples e moderna para mesclar arquivos PDF e converter imagens 
 ## 🚀 Características
 
 - ✨ Interface moderna e intuitiva
+- 🧭 Acesso às ferramentas por abas na página principal
 - 📁 Suporte para drag & drop de arquivos
 - 🔄 Seleção múltipla de PDFs
 - 🖼️ Miniatura da primeira página de cada PDF na lista principal
 - ↻ Rotação individual das páginas antes da mesclagem
+- ↻ Rotação individual das páginas ao separar um PDF
 - 📊 Barra de progresso durante o merge
 - ✅ Validação de arquivos
 - 💾 Download automático do PDF mesclado
 - 🖼️ Conversão de uma ou mais imagens em um PDF com várias páginas
+- 🔎 Prévia e rotação individual das imagens antes da conversão
 - ✂️ Separação de PDF em páginas individuais ou por intervalos personalizados
 - 🖼️ Miniaturas das páginas para selecionar visualmente o que será separado
 - 🎨 Design responsivo e bonito
@@ -38,10 +41,9 @@ Aplicação web simples e moderna para mesclar arquivos PDF e converter imagens 
    - Uma barra de progresso mostrará o andamento
    - O arquivo mesclado será baixado automaticamente como `merged_document.pdf`
 
-5. **Converta imagens para PDF**
-   - Clique em "Converter imagem" no card lateral
-   - Escolha uma ou mais imagens no popup
-   - Clique em "Converter para PDF" para baixar `imagens.pdf`
+5. **Use as outras ferramentas**
+   - Clique na aba "Separar PDF" para selecionar um arquivo, definir as páginas ou intervalos e girar páginas individualmente
+   - Clique na aba "Imagem para PDF" para pré-visualizar e girar imagens antes de baixar `imagens.pdf`
 
 ## 🛠️ Tecnologias Utilizadas
 

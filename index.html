@@ -20,101 +20,124 @@
       rel="stylesheet" />
   </head>
   <body>
-    <section>
-      <div class="tit">
-        <h1 id="brand">UNIX.MERGE</h1>
-        <p class="subtitle">Junte múltiplos arquivos PDF em um só</p>
+    <header class="app-header">
+      <a class="brand" href="#" aria-label="UNIX.MERGE - início">UNIX.MERGE</a>
+      <div class="privacy-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="4" y="10" width="16" height="11" rx="2" />
+          <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+        </svg>
+        <span>Processado no seu navegador. Seus arquivos não saem do computador.</span>
       </div>
-      <div class="tools-layout">
+    </header>
+
+    <nav class="tool-tabs" role="tablist" aria-label="Ferramentas PDF">
+      <button class="tool-tab active" id="mergeTab" type="button" role="tab" aria-selected="true" aria-controls="mergeView" data-tool="merge">
+        Juntar PDFs
+      </button>
+      <button class="tool-tab" id="splitterTab" type="button" role="tab" aria-selected="false" aria-controls="splitterView" data-tool="splitter">
+        Separar PDF
+      </button>
+      <button class="tool-tab" id="converterTab" type="button" role="tab" aria-selected="false" aria-controls="converterView" data-tool="converter">
+        Imagem para PDF
+      </button>
+    </nav>
+
+    <main class="app-main">
+      <section class="tool-view merge-view" id="mergeView" role="tabpanel" aria-labelledby="mergeTab">
+        <div class="tool-heading">
+          <h1>Junte múltiplos PDFs em um só</h1>
+          <p>Arraste, reordene e baixe em segundos. Grátis e sem cadastro.</p>
+        </div>
         <div class="container">
           <div class="upload-area" id="uploadArea">
-            <div class="upload-icon">+</div>
-            <div class="upload-text">Clique ou arraste arquivos aqui</div>
-            <div class="upload-hint">Apenas arquivos PDF (Máx. 50MB cada)</div>
+            <div class="upload-icon" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 16V4m0 0L7 9m5-5 5 5" />
+                <path d="M5 15v4a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-4" />
+              </svg>
+            </div>
+            <div class="upload-text">Solte seus PDFs aqui</div>
+            <button class="select-files-btn" id="selectFilesBtn" type="button">Selecionar arquivos</button>
+            <div class="upload-hint">Apenas arquivos PDF</div>
             <input type="file" id="fileInput" accept=".pdf" multiple />
           </div>
 
           <div class="fileCount" id="fileCount"></div>
-
           <div class="file-list" id="fileList"></div>
-
           <div class="document-actions" id="documentActions" hidden>
-            <button class="merge-btn" id="mergeBtn" disabled>
-              Juntar Documentos
-            </button>
-            <button class="clear-btn" id="clearBtn">
-              Limpar Tudo
-            </button>
+            <button class="merge-btn" id="mergeBtn" disabled>Juntar Documentos</button>
+            <button class="clear-btn" id="clearBtn">Limpar Tudo</button>
           </div>
-
           <div class="progress-container" id="progressContainer">
             <div class="progress-bar">
               <div class="progress-fill" id="progressFill">0%</div>
             </div>
           </div>
-
           <div class="message" id="message"></div>
         </div>
+      </section>
 
-        <aside class="tool-cards">
-          <div class="converter-card">
-            <div class="converter-card-icon" aria-hidden="true">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-                <rect x="3" y="3" width="18" height="18" rx="3" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <path d="m21 15-5-5L5 21" />
-              </svg>
-            </div>
-            <h2>Imagem para PDF</h2>
-            <button class="converter-open-btn" id="openConverterBtn" type="button">
-              Converter imagem
+      <section class="tool-view" id="splitterView" role="tabpanel" aria-labelledby="splitterTab" hidden>
+        <div class="tool-heading">
+          <h1>Separe as páginas do PDF</h1>
+          <p>Escolha um arquivo e defina quais páginas deseja extrair.</p>
+        </div>
+        <div class="container tool-container">
+          <label class="image-upload-area" for="splitPdfInput">
+            <span class="upload-icon" aria-hidden="true">+</span>
+            <span class="upload-text">Clique para escolher um PDF</span>
+            <span class="upload-hint">Máx. 50MB</span>
+          </label>
+          <input type="file" id="splitPdfInput" accept=".pdf,application/pdf" hidden />
+          <p class="selected-images" id="selectedSplitPdf" aria-live="polite">
+            Nenhum PDF selecionado
+          </p>
+          <div class="split-preview" id="splitPreview" aria-label="Prévia das páginas"></div>
+          <label class="page-range-label" for="pageRangeInput">
+            Páginas ou intervalos
+            <input
+              type="text"
+              id="pageRangeInput"
+              placeholder="Ex: 1-3, 5, 7-8"
+              autocomplete="off"
+            />
+          </label>
+          <p class="range-hint">Deixe em branco para baixar uma página por arquivo.</p>
+          <div class="converter-message" id="splitterMessage" role="status" aria-live="polite"></div>
+          <div class="tool-form-actions">
+            <button class="converter-submit-btn" id="splitBtn" type="button" disabled>
+              Separar PDF
             </button>
           </div>
+        </div>
+      </section>
 
-          <div class="converter-card">
-            <div class="converter-card-icon" aria-hidden="true">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
-                <path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3" />
-                <path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3" />
-                <path d="M12 7v10M9 12h6" />
-              </svg>
-            </div>
-            <h2>Separar PDF</h2>
-            <button class="converter-open-btn" id="openSplitterBtn" type="button">
-              Separar páginas
-            </button>
-          </div>
-        </aside>
-      </div>
-    </section>
-
-    <dialog class="converter-dialog" id="converterDialog" aria-labelledby="converterTitle">
-      <div class="converter-dialog-header">
-        <div>
-          <h2 id="converterTitle">Converter imagem para PDF</h2>
+      <section class="tool-view" id="converterView" role="tabpanel" aria-labelledby="converterTab" hidden>
+        <div class="tool-heading">
+          <h1>Converta imagens para PDF</h1>
           <p>Escolha uma ou mais imagens para criar seu documento.</p>
         </div>
-        <button class="dialog-close-btn" id="closeConverterBtn" type="button" aria-label="Fechar">
-          &times;
-        </button>
-      </div>
-      <label class="image-upload-area" for="imageInput">
-        <span class="upload-icon" aria-hidden="true">+</span>
-        <span class="upload-text">Clique para escolher imagens</span>
-        <span class="upload-hint">PNG, JPG, WEBP, GIF e outros formatos de imagem</span>
-      </label>
-      <input type="file" id="imageInput" accept="image/*" multiple hidden />
-      <p class="selected-images" id="selectedImages" aria-live="polite">
-        Nenhuma imagem selecionada
-      </p>
-      <div class="converter-message" id="converterMessage" role="status" aria-live="polite"></div>
-      <div class="converter-dialog-actions">
-        <button class="dialog-cancel-btn" id="cancelConverterBtn" type="button">Cancelar</button>
-        <button class="converter-submit-btn" id="convertBtn" type="button" disabled>
-          Converter para PDF
-        </button>
-      </div>
-    </dialog>
+        <div class="container tool-container">
+          <label class="image-upload-area" for="imageInput">
+            <span class="upload-icon" aria-hidden="true">+</span>
+            <span class="upload-text">Clique para escolher imagens</span>
+            <span class="upload-hint">PNG, JPG, WEBP, GIF e outros formatos de imagem</span>
+          </label>
+          <input type="file" id="imageInput" accept="image/*" multiple hidden />
+          <p class="selected-images" id="selectedImages" aria-live="polite">
+            Nenhuma imagem selecionada
+          </p>
+          <div class="image-preview-grid" id="imagePreview" aria-label="Prévia das imagens selecionadas"></div>
+          <div class="converter-message" id="converterMessage" role="status" aria-live="polite"></div>
+          <div class="tool-form-actions">
+            <button class="converter-submit-btn" id="convertBtn" type="button" disabled>
+              Converter para PDF
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
 
     <dialog
       class="converter-dialog page-rotation-dialog"
@@ -133,45 +156,6 @@
       <div class="page-rotation-preview" id="pageRotationPreview" aria-label="Páginas do PDF"></div>
       <div class="converter-dialog-actions">
         <button class="dialog-cancel-btn" id="donePageRotationBtn" type="button">Concluir</button>
-      </div>
-    </dialog>
-
-    <dialog class="converter-dialog splitter-dialog" id="splitterDialog" aria-labelledby="splitterTitle">
-      <div class="converter-dialog-header">
-        <div>
-          <h2 id="splitterTitle">Separar PDF</h2>
-          <p>Divida todas as páginas ou escolha intervalos personalizados.</p>
-        </div>
-        <button class="dialog-close-btn" id="closeSplitterBtn" type="button" aria-label="Fechar">
-          &times;
-        </button>
-      </div>
-      <label class="image-upload-area" for="splitPdfInput">
-        <span class="upload-icon" aria-hidden="true">+</span>
-        <span class="upload-text">Clique para escolher um PDF</span>
-        <span class="upload-hint">Máx. 50MB</span>
-      </label>
-      <input type="file" id="splitPdfInput" accept=".pdf,application/pdf" hidden />
-      <p class="selected-images" id="selectedSplitPdf" aria-live="polite">
-        Nenhum PDF selecionado
-      </p>
-      <div class="split-preview" id="splitPreview" aria-label="Prévia das páginas"></div>
-      <label class="page-range-label" for="pageRangeInput">
-        Páginas ou intervalos
-        <input
-          type="text"
-          id="pageRangeInput"
-          placeholder="Ex: 1-3, 5, 7-8"
-          autocomplete="off"
-        />
-      </label>
-      <p class="range-hint">Deixe em branco para baixar uma página por arquivo.</p>
-      <div class="converter-message" id="splitterMessage" role="status" aria-live="polite"></div>
-      <div class="converter-dialog-actions">
-        <button class="dialog-cancel-btn" id="cancelSplitterBtn" type="button">Cancelar</button>
-        <button class="converter-submit-btn" id="splitBtn" type="button" disabled>
-          Separar PDF
-        </button>
       </div>
     </dialog>
 

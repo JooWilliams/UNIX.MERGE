@@ -1,6 +1,8 @@
-const { PDFDocument } = PDFLib;
+const { PDFDocument, degrees } = PDFLib;
 
 let selectedFiles = [];
+const fileRotations = new WeakMap();
+const fileThumbnailPromises = new WeakMap();
 const uploadArea = document.getElementById("uploadArea");
 const fileInput = document.getElementById("fileInput");
 const fileCount = document.getElementById("fileCount");
@@ -111,6 +113,14 @@ function updateFileList() {
     fileItem.draggable = true;
     fileItem.dataset.index = index;
 
+    const thumbnail = document.createElement("div");
+    thumbnail.className = "file-thumbnail";
+    thumbnail.textContent = "PDF";
+    renderMergeThumbnail(file, thumbnail);
+
+    const fileDetails = document.createElement("div");
+    fileDetails.className = "file-details";
+
     const fileName = document.createElement("span");
     fileName.className = "file-name";
     fileName.textContent = file.name;
@@ -118,6 +128,9 @@ function updateFileList() {
     const fileSize = document.createElement("span");
     fileSize.className = "file-size";
     fileSize.textContent = formatFileSize(file.size);
+
+    fileDetails.appendChild(fileName);
+    fileDetails.appendChild(fileSize);
 
     const orderControls = document.createElement("div");
     orderControls.className = "file-order-controls";
@@ -143,6 +156,28 @@ function updateFileList() {
     orderControls.appendChild(moveUpBtn);
     orderControls.appendChild(moveDownBtn);
 
+    const rotationControls = document.createElement("div");
+    rotationControls.className = "file-rotation-controls";
+
+    const rotateLeftBtn = document.createElement("button");
+    rotateLeftBtn.className = "rotate-file-btn";
+    rotateLeftBtn.type = "button";
+    rotateLeftBtn.textContent = "↶";
+    rotateLeftBtn.title = `Girar ${file.name} 90 graus para a esquerda`;
+    rotateLeftBtn.setAttribute("aria-label", rotateLeftBtn.title);
+    rotateLeftBtn.onclick = () => rotateFile(file, -90);
+
+    const rotateRightBtn = document.createElement("button");
+    rotateRightBtn.className = "rotate-file-btn";
+    rotateRightBtn.type = "button";
+    rotateRightBtn.textContent = "↻";
+    rotateRightBtn.title = `Girar ${file.name} 90 graus para a direita`;
+    rotateRightBtn.setAttribute("aria-label", rotateRightBtn.title);
+    rotateRightBtn.onclick = () => rotateFile(file, 90);
+
+    rotationControls.appendChild(rotateLeftBtn);
+    rotationControls.appendChild(rotateRightBtn);
+
     const removeBtn = document.createElement("button");
     removeBtn.className = "remove-btn";
     removeBtn.type = "button";
@@ -153,14 +188,75 @@ function updateFileList() {
 </svg>`;
     removeBtn.onclick = () => removeFile(index);
 
-    fileItem.appendChild(fileName);
-    fileItem.appendChild(fileSize);
+    fileItem.appendChild(thumbnail);
+    fileItem.appendChild(fileDetails);
     fileItem.appendChild(orderControls);
+    fileItem.appendChild(rotationControls);
     fileItem.appendChild(removeBtn);
     fileList.appendChild(fileItem);
   });
 
   clearBtn.style.display = selectedFiles.length > 0 ? "block" : "none";
+}
+
+async function renderMergeThumbnail(file, container) {
+  try {
+    let rotations = fileThumbnailPromises.get(file);
+    if (!rotations) {
+      rotations = new Map();
+      fileThumbnailPromises.set(file, rotations);
+    }
+
+    const rotation = fileRotations.get(file) || 0;
+    let thumbnailPromise = rotations.get(rotation);
+    if (!thumbnailPromise) {
+      thumbnailPromise = createMergeThumbnail(file, rotation);
+      rotations.set(rotation, thumbnailPromise);
+    }
+
+    const thumbnailUrl = await thumbnailPromise;
+    if (!container.isConnected) return;
+    container.textContent = "";
+    const image = document.createElement("img");
+    image.src = thumbnailUrl;
+    image.alt = `Miniatura da primeira página de ${file.name}`;
+    container.appendChild(image);
+  } catch (error) {
+    console.error(`Erro ao gerar miniatura de "${file.name}":`, error);
+    if (container.isConnected) container.textContent = "Prévia indisponível";
+  }
+}
+
+async function createMergeThumbnail(file, rotation) {
+  if (typeof pdfjsLib === "undefined") {
+    throw new Error("O visualizador de páginas não foi carregado.");
+  }
+
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+  const pdf = await pdfjsLib.getDocument({
+    data: new Uint8Array(await file.arrayBuffer()),
+  }).promise;
+  const page = await pdf.getPage(1);
+  const viewport = page.getViewport({
+    scale: 0.28,
+    rotation: (page.rotate + rotation + 360) % 360,
+  });
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Não foi possível preparar a miniatura.");
+
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({ canvasContext: context, viewport }).promise;
+  return canvas.toDataURL("image/png");
+}
+
+function rotateFile(file, offset) {
+  const currentRotation = fileRotations.get(file) || 0;
+  fileRotations.set(file, (currentRotation + offset + 360) % 360);
+  updateFileList();
 }
 
 function moveFile(index, offset) {
@@ -288,6 +384,9 @@ mergeBtn.addEventListener("click", async () => {
       const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
 
       copiedPages.forEach((page) => {
+        const rotation =
+          (page.getRotation().angle + (fileRotations.get(file) || 0)) % 360;
+        page.setRotation(degrees(rotation));
         mergedPdf.addPage(page);
       });
     }

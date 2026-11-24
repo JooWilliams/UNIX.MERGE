@@ -363,6 +363,22 @@ h1 {
   transform: scale(1.05);
 }
 
+.document-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.document-actions[hidden] {
+  display: none;
+}
+
+.document-actions > button {
+  flex: 1;
+  width: auto;
+  margin: 0;
+}
+
 .merge-btn {
   width: 100%;
   background: oklch(55% 0.18 250);
@@ -373,7 +389,6 @@ h1 {
   font-size: 0.85em;
   font-weight: 500;
   cursor: pointer;
-  margin-top: 20px;
   transition: all 0.3s ease;
   font-family: "Poppins", sans-serif;
 }
@@ -442,15 +457,16 @@ h1 {
   border: none;
   border-radius: 10px;
   padding: 10px;
-  font-size: 0.7em;
-  font-weight: 400;
+  font-size: 0.85em;
+  font-weight: 500;
   cursor: pointer;
-  margin-top: 10px;
   transition: all 0.3s ease;
+  font-family: "Poppins", sans-serif;
 }
 
 .clear-btn:hover {
-  background: #676a6d;
+  background: #ff3838;
+  transform: scale(1.05);
 }
 
 .footer {

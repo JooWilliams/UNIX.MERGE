@@ -8,6 +8,7 @@ const uploadArea = document.getElementById("uploadArea");
 const fileInput = document.getElementById("fileInput");
 const fileCount = document.getElementById("fileCount");
 const fileList = document.getElementById("fileList");
+const documentActions = document.getElementById("documentActions");
 const mergeBtn = document.getElementById("mergeBtn");
 const clearBtn = document.getElementById("clearBtn");
 const progressContainer = document.getElementById("progressContainer");
@@ -212,7 +213,7 @@ function updateFileList() {
     renderMergeThumbnail(file, thumbnail);
   });
 
-  clearBtn.style.display = selectedFiles.length > 0 ? "block" : "none";
+  documentActions.hidden = selectedFiles.length === 0;
 }
 
 async function renderFilePageCount(file, container) {

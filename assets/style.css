@@ -465,7 +465,7 @@ h1 {
 }
 
 .clear-btn:hover {
-  background: #ff3838;
+  background: #ff3838 !important;
   transform: scale(1.05);
 }
 

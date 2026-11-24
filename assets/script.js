@@ -745,6 +745,7 @@ imageInput.addEventListener("change", () => {
   selectedImagesFiles = Array.from(imageInput.files).filter((file) =>
     file.type.startsWith("image/"),
   );
+  imageInput.value = "";
   updateSelectedImages();
   hideConverterMessage();
 });
@@ -810,7 +811,7 @@ function updateSelectedImages() {
 function renderSelectedImagePreviews() {
   imagePreview.innerHTML = "";
 
-  selectedImagesFiles.forEach((file) => {
+  selectedImagesFiles.forEach((file, index) => {
     const card = document.createElement("article");
     card.className = "image-preview-card";
 
@@ -860,10 +861,23 @@ function renderSelectedImagePreviews() {
       controls.appendChild(button);
     });
 
+    const removeButton = document.createElement("button");
+    removeButton.className = "image-remove-btn";
+    removeButton.type = "button";
+    removeButton.textContent = "Remover";
+    removeButton.setAttribute("aria-label", `Remover ${file.name}`);
+    removeButton.disabled = isConvertingImages;
+    removeButton.addEventListener("click", () => {
+      selectedImagesFiles.splice(index, 1);
+      updateSelectedImages();
+      hideConverterMessage();
+    });
+
     card.appendChild(imageContainer);
     card.appendChild(fileName);
     card.appendChild(rotationLabel);
     card.appendChild(controls);
+    card.appendChild(removeButton);
     imagePreview.appendChild(card);
   });
 }

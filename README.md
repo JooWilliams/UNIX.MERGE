@@ -43,7 +43,7 @@ Aplicação web simples e moderna para mesclar arquivos PDF e converter imagens 
 
 5. **Use as outras ferramentas**
    - Clique na aba "Separar PDF" para selecionar um arquivo, definir as páginas ou intervalos e girar páginas individualmente
-   - Clique na aba "Imagem para PDF" para pré-visualizar e girar imagens antes de baixar `imagens.pdf`
+   - Clique na aba "Imagem para PDF" para pré-visualizar, girar e remover imagens antes de baixar `imagens.pdf`
 
 ## 🛠️ Tecnologias Utilizadas
 

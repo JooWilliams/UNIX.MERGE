@@ -1186,12 +1186,28 @@ body {
   cursor: pointer;
 }
 
+.image-remove-btn {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid #f1c7c7;
+  border-radius: 7px;
+  background: #fff5f5;
+  color: #a33b3b;
+  font-size: 0.68em;
+  cursor: pointer;
+}
+
+.image-remove-btn:hover:not(:disabled) {
+  background: #fde8e8;
+}
+
 .image-rotate-btn:hover:not(:disabled),
 .split-rotate-btn:hover:not(:disabled) {
   background: #dfe4ff;
 }
 
 .image-rotate-btn:disabled,
+.image-remove-btn:disabled,
 .split-rotate-btn:disabled {
   opacity: 0.5;
   cursor: wait;

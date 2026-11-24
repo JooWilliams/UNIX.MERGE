@@ -8,7 +8,7 @@ Aplicação web simples e moderna para mesclar arquivos PDF e converter imagens 
 - 📁 Suporte para drag & drop de arquivos
 - 🔄 Seleção múltipla de PDFs
 - 🖼️ Miniatura da primeira página de cada PDF na lista principal
-- ↻ Rotação dos PDFs selecionados antes da mesclagem
+- ↻ Rotação individual das páginas antes da mesclagem
 - 📊 Barra de progresso durante o merge
 - ✅ Validação de arquivos
 - 💾 Download automático do PDF mesclado
@@ -29,8 +29,8 @@ Aplicação web simples e moderna para mesclar arquivos PDF e converter imagens 
    - Arraste e solte os arquivos PDF diretamente na área
 
 3. **Organize os arquivos**
-   - Arraste os arquivos ou use as setas para escolher a ordem da mesclagem
-   - Use os botões de rotação para girar todas as páginas de um arquivo em 90°
+   - Os arquivos aparecem em uma grade de duas colunas; arraste ou use as setas para escolher a ordem da mesclagem
+   - Clique em um arquivo para visualizar todas as páginas e girar individualmente cada uma em 90°
    - Você pode remover arquivos clicando no botão ✕
 
 4. **Clique em "Juntar PDFs"**

@@ -1,7 +1,8 @@
 const { PDFDocument, degrees } = PDFLib;
 
 let selectedFiles = [];
-const fileRotations = new WeakMap();
+const filePageRotations = new WeakMap();
+const filePageCountPromises = new WeakMap();
 const fileThumbnailPromises = new WeakMap();
 const uploadArea = document.getElementById("uploadArea");
 const fileInput = document.getElementById("fileInput");
@@ -12,6 +13,15 @@ const clearBtn = document.getElementById("clearBtn");
 const progressContainer = document.getElementById("progressContainer");
 const progressFill = document.getElementById("progressFill");
 const message = document.getElementById("message");
+const pageRotationDialog = document.getElementById("pageRotationDialog");
+const pageRotationTitle = document.getElementById("pageRotationTitle");
+const pageRotationSummary = document.getElementById("pageRotationSummary");
+const pageRotationMessage = document.getElementById("pageRotationMessage");
+const pageRotationPreview = document.getElementById("pageRotationPreview");
+const closePageRotationBtn = document.getElementById("closePageRotationBtn");
+const donePageRotationBtn = document.getElementById("donePageRotationBtn");
+let activePageRotationPdf = null;
+let pageRotationRequest = 0;
 const converterDialog = document.getElementById("converterDialog");
 const openConverterBtn = document.getElementById("openConverterBtn");
 const closeConverterBtn = document.getElementById("closeConverterBtn");
@@ -116,7 +126,6 @@ function updateFileList() {
     const thumbnail = document.createElement("div");
     thumbnail.className = "file-thumbnail";
     thumbnail.textContent = "PDF";
-    renderMergeThumbnail(file, thumbnail);
 
     const fileDetails = document.createElement("div");
     fileDetails.className = "file-details";
@@ -129,8 +138,18 @@ function updateFileList() {
     fileSize.className = "file-size";
     fileSize.textContent = formatFileSize(file.size);
 
+    const pageCount = document.createElement("span");
+    pageCount.className = "file-page-count";
+    pageCount.textContent = "Lendo páginas...";
+
+    const fileHint = document.createElement("span");
+    fileHint.className = "file-hint";
+    fileHint.textContent = "Ver páginas";
+
     fileDetails.appendChild(fileName);
     fileDetails.appendChild(fileSize);
+    fileDetails.appendChild(pageCount);
+    fileDetails.appendChild(fileHint);
 
     const orderControls = document.createElement("div");
     orderControls.className = "file-order-controls";
@@ -156,28 +175,6 @@ function updateFileList() {
     orderControls.appendChild(moveUpBtn);
     orderControls.appendChild(moveDownBtn);
 
-    const rotationControls = document.createElement("div");
-    rotationControls.className = "file-rotation-controls";
-
-    const rotateLeftBtn = document.createElement("button");
-    rotateLeftBtn.className = "rotate-file-btn";
-    rotateLeftBtn.type = "button";
-    rotateLeftBtn.textContent = "↶";
-    rotateLeftBtn.title = `Girar ${file.name} 90 graus para a esquerda`;
-    rotateLeftBtn.setAttribute("aria-label", rotateLeftBtn.title);
-    rotateLeftBtn.onclick = () => rotateFile(file, -90);
-
-    const rotateRightBtn = document.createElement("button");
-    rotateRightBtn.className = "rotate-file-btn";
-    rotateRightBtn.type = "button";
-    rotateRightBtn.textContent = "↻";
-    rotateRightBtn.title = `Girar ${file.name} 90 graus para a direita`;
-    rotateRightBtn.setAttribute("aria-label", rotateRightBtn.title);
-    rotateRightBtn.onclick = () => rotateFile(file, 90);
-
-    rotationControls.appendChild(rotateLeftBtn);
-    rotationControls.appendChild(rotateRightBtn);
-
     const removeBtn = document.createElement("button");
     removeBtn.className = "remove-btn";
     removeBtn.type = "button";
@@ -190,32 +187,53 @@ function updateFileList() {
 
     fileItem.appendChild(thumbnail);
     fileItem.appendChild(fileDetails);
-    fileItem.appendChild(orderControls);
-    fileItem.appendChild(rotationControls);
-    fileItem.appendChild(removeBtn);
+    const fileActions = document.createElement("div");
+    fileActions.className = "file-actions";
+    fileActions.appendChild(orderControls);
+    fileActions.appendChild(removeBtn);
+    fileItem.appendChild(fileActions);
+
+    const openPreviewBtn = document.createElement("button");
+    openPreviewBtn.className = "file-open-btn";
+    openPreviewBtn.type = "button";
+    openPreviewBtn.setAttribute(
+      "aria-label",
+      `Visualizar e girar páginas de ${file.name}`,
+    );
+    openPreviewBtn.title = "Visualizar páginas e ajustar rotação";
+    openPreviewBtn.addEventListener("click", () =>
+      openPageRotationDialog(file),
+    );
+    fileItem.appendChild(openPreviewBtn);
+
     fileList.appendChild(fileItem);
+
+    renderFilePageCount(file, pageCount);
+    renderMergeThumbnail(file, thumbnail);
   });
 
   clearBtn.style.display = selectedFiles.length > 0 ? "block" : "none";
 }
 
+async function renderFilePageCount(file, container) {
+  try {
+    const pageCount = await getFilePageCount(file);
+    if (container.isConnected) {
+      container.textContent = `${pageCount} ${
+        pageCount === 1 ? "página" : "páginas"
+      }`;
+    }
+  } catch (error) {
+    console.error(`Erro ao contar páginas de "${file.name}":`, error);
+    if (container.isConnected) container.textContent = "Páginas indisponíveis";
+  }
+}
+
 async function renderMergeThumbnail(file, container) {
   try {
-    let rotations = fileThumbnailPromises.get(file);
-    if (!rotations) {
-      rotations = new Map();
-      fileThumbnailPromises.set(file, rotations);
-    }
-
-    const rotation = fileRotations.get(file) || 0;
-    let thumbnailPromise = rotations.get(rotation);
-    if (!thumbnailPromise) {
-      thumbnailPromise = createMergeThumbnail(file, rotation);
-      rotations.set(rotation, thumbnailPromise);
-    }
-
-    const thumbnailUrl = await thumbnailPromise;
-    if (!container.isConnected) return;
+    const rotation = getPageRotation(file, 0);
+    const thumbnailUrl = await getFileThumbnail(file, rotation);
+    if (!container.isConnected || getPageRotation(file, 0) !== rotation) return;
     container.textContent = "";
     const image = document.createElement("img");
     image.src = thumbnailUrl;
@@ -227,7 +245,7 @@ async function renderMergeThumbnail(file, container) {
   }
 }
 
-async function createMergeThumbnail(file, rotation) {
+async function loadPdfJsDocument(file) {
   if (typeof pdfjsLib === "undefined") {
     throw new Error("O visualizador de páginas não foi carregado.");
   }
@@ -235,14 +253,60 @@ async function createMergeThumbnail(file, rotation) {
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-  const pdf = await pdfjsLib.getDocument({
+  return pdfjsLib.getDocument({
     data: new Uint8Array(await file.arrayBuffer()),
   }).promise;
-  const page = await pdf.getPage(1);
-  const viewport = page.getViewport({
-    scale: 0.28,
-    rotation: (page.rotate + rotation + 360) % 360,
-  });
+}
+
+async function getFilePageCount(file) {
+  let pageCountPromise = filePageCountPromises.get(file);
+  if (!pageCountPromise) {
+    pageCountPromise = (async () => {
+      const pdf = await loadPdfJsDocument(file);
+      try {
+        return pdf.numPages;
+      } finally {
+        await pdf.destroy();
+      }
+    })();
+    filePageCountPromises.set(file, pageCountPromise);
+  }
+  return pageCountPromise;
+}
+
+async function getFileThumbnail(file, rotation) {
+  let thumbnails = fileThumbnailPromises.get(file);
+  if (!thumbnails) {
+    thumbnails = new Map();
+    fileThumbnailPromises.set(file, thumbnails);
+  }
+
+  const normalizedRotation = (rotation + 360) % 360;
+  let thumbnailPromise = thumbnails.get(normalizedRotation);
+  if (!thumbnailPromise) {
+    thumbnailPromise = (async () => {
+      const pdf = await loadPdfJsDocument(file);
+      try {
+        const page = await pdf.getPage(1);
+        const canvas = await renderPdfPage(page, normalizedRotation, 100);
+        return canvas.toDataURL("image/png");
+      } finally {
+        await pdf.destroy();
+      }
+    })();
+    thumbnails.set(normalizedRotation, thumbnailPromise);
+  }
+  return thumbnailPromise;
+}
+
+async function renderPdfPage(page, additionalRotation = 0, maxDimension = 180) {
+  const rotation = (page.rotate + additionalRotation + 360) % 360;
+  const naturalViewport = page.getViewport({ scale: 1, rotation });
+  const scale = Math.min(
+    0.45,
+    maxDimension / Math.max(naturalViewport.width, naturalViewport.height),
+  );
+  const viewport = page.getViewport({ scale, rotation });
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Não foi possível preparar a miniatura.");
@@ -250,13 +314,198 @@ async function createMergeThumbnail(file, rotation) {
   canvas.width = viewport.width;
   canvas.height = viewport.height;
   await page.render({ canvasContext: context, viewport }).promise;
-  return canvas.toDataURL("image/png");
+  return canvas;
 }
 
-function rotateFile(file, offset) {
-  const currentRotation = fileRotations.get(file) || 0;
-  fileRotations.set(file, (currentRotation + offset + 360) % 360);
-  updateFileList();
+function getPageRotation(file, pageIndex) {
+  return filePageRotations.get(file)?.get(pageIndex) || 0;
+}
+
+function rotatePage(file, pageIndex, offset) {
+  let rotations = filePageRotations.get(file);
+  if (!rotations) {
+    rotations = new Map();
+    filePageRotations.set(file, rotations);
+  }
+
+  const rotation = (getPageRotation(file, pageIndex) + offset + 360) % 360;
+  if (rotation === 0) {
+    rotations.delete(pageIndex);
+  } else {
+    rotations.set(pageIndex, rotation);
+  }
+
+  const fileIndex = selectedFiles.indexOf(file);
+  if (fileIndex !== -1) {
+    const thumbnail = fileList.querySelector(
+      `.file-item[data-index="${fileIndex}"] .file-thumbnail`,
+    );
+    if (thumbnail) {
+      thumbnail.textContent = "PDF";
+      renderMergeThumbnail(file, thumbnail);
+    }
+  }
+}
+
+async function openPageRotationDialog(file) {
+  const request = ++pageRotationRequest;
+  pageRotationTitle.textContent = file.name;
+  pageRotationSummary.textContent = "Lendo páginas...";
+  pageRotationPreview.innerHTML = "";
+  showPageRotationMessage("Carregando prévia das páginas...", true);
+  pageRotationDialog.showModal();
+
+  try {
+    const pageCount = await getFilePageCount(file);
+    if (request !== pageRotationRequest) return;
+
+    pageRotationSummary.textContent =
+      `${pageCount} ${pageCount === 1 ? "página" : "páginas"} • ` +
+      "Gire cada página individualmente.";
+
+    const pdf = await loadPdfJsDocument(file);
+    if (request !== pageRotationRequest) {
+      await pdf.destroy();
+      return;
+    }
+    activePageRotationPdf = pdf;
+
+    for (let pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+      if (request !== pageRotationRequest) return;
+
+      const page = await pdf.getPage(pageIndex + 1);
+      if (request !== pageRotationRequest) return;
+
+      const pageCard = createPageRotationCard(file, page, pageIndex);
+      pageRotationPreview.appendChild(pageCard.element);
+      await pageCard.renderPreview();
+    }
+
+    if (request === pageRotationRequest) hidePageRotationMessage();
+  } catch (error) {
+    console.error(`Erro ao visualizar páginas de "${file.name}":`, error);
+    if (request !== pageRotationRequest) return;
+
+    const pdf = activePageRotationPdf;
+    activePageRotationPdf = null;
+    if (pdf) {
+      pdf.destroy().catch((destroyError) =>
+        console.error("Erro ao liberar a prévia do PDF:", destroyError),
+      );
+    }
+    showPageRotationMessage(
+      "Não foi possível carregar as páginas deste PDF.",
+    );
+  }
+}
+
+function createPageRotationCard(file, page, pageIndex) {
+  const pageCard = document.createElement("article");
+  pageCard.className = "rotation-page-card";
+
+  const pagePreview = document.createElement("div");
+  pagePreview.className = "rotation-page-canvas";
+  pagePreview.textContent = "Carregando...";
+
+  const pageLabel = document.createElement("span");
+  pageLabel.className = "rotation-page-label";
+  pageLabel.textContent = `Página ${pageIndex + 1}`;
+
+  const rotationLabel = document.createElement("span");
+  rotationLabel.className = "rotation-page-angle";
+
+  let renderVersion = 0;
+  const renderPreview = async () => {
+    const currentRender = ++renderVersion;
+    const rotation = getPageRotation(file, pageIndex);
+    rotationLabel.textContent = `Rotação: ${rotation}°`;
+    const canvas = await renderPdfPage(page, rotation);
+    if (
+      currentRender === renderVersion &&
+      pagePreview.isConnected
+    ) {
+      pagePreview.replaceChildren(canvas);
+    }
+  };
+
+  const rotationControls = document.createElement("div");
+  rotationControls.className = "page-rotation-controls";
+
+  const rotateLeftBtn = document.createElement("button");
+  rotateLeftBtn.className = "rotate-page-btn";
+  rotateLeftBtn.type = "button";
+  rotateLeftBtn.textContent = "↶";
+  rotateLeftBtn.title = `Girar página ${pageIndex + 1} 90 graus para a esquerda`;
+  rotateLeftBtn.setAttribute("aria-label", rotateLeftBtn.title);
+  rotateLeftBtn.addEventListener("click", () => {
+    rotatePage(file, pageIndex, -90);
+    renderPreview().catch((error) =>
+      showPageRotationRenderError(file, pageIndex, pagePreview, error),
+    );
+  });
+
+  const rotateRightBtn = document.createElement("button");
+  rotateRightBtn.className = "rotate-page-btn";
+  rotateRightBtn.type = "button";
+  rotateRightBtn.textContent = "↻";
+  rotateRightBtn.title = `Girar página ${pageIndex + 1} 90 graus para a direita`;
+  rotateRightBtn.setAttribute("aria-label", rotateRightBtn.title);
+  rotateRightBtn.addEventListener("click", () => {
+    rotatePage(file, pageIndex, 90);
+    renderPreview().catch((error) =>
+      showPageRotationRenderError(file, pageIndex, pagePreview, error),
+    );
+  });
+
+  rotationControls.appendChild(rotateLeftBtn);
+  rotationControls.appendChild(rotateRightBtn);
+  pageCard.appendChild(pagePreview);
+  pageCard.appendChild(pageLabel);
+  pageCard.appendChild(rotationLabel);
+  pageCard.appendChild(rotationControls);
+  return { element: pageCard, renderPreview };
+}
+
+function showPageRotationRenderError(file, pageIndex, preview, error) {
+  console.error(
+    `Erro ao atualizar a prévia da página ${pageIndex + 1} de "${file.name}":`,
+    error,
+  );
+  preview.textContent = "Não foi possível atualizar a prévia.";
+  showPageRotationMessage(
+    `Não foi possível atualizar a página ${pageIndex + 1}.`,
+  );
+}
+
+closePageRotationBtn.addEventListener("click", () =>
+  pageRotationDialog.close(),
+);
+donePageRotationBtn.addEventListener("click", () =>
+  pageRotationDialog.close(),
+);
+
+pageRotationDialog.addEventListener("close", () => {
+  pageRotationRequest++;
+  pageRotationPreview.innerHTML = "";
+  const pdf = activePageRotationPdf;
+  activePageRotationPdf = null;
+  if (pdf) {
+    pdf.destroy().catch((error) =>
+      console.error("Erro ao liberar a prévia do PDF:", error),
+    );
+  }
+  hidePageRotationMessage();
+});
+
+function showPageRotationMessage(text, processing = false) {
+  pageRotationMessage.textContent = text;
+  pageRotationMessage.classList.add("visible");
+  pageRotationMessage.classList.toggle("processing", processing);
+}
+
+function hidePageRotationMessage() {
+  pageRotationMessage.textContent = "";
+  pageRotationMessage.classList.remove("visible", "processing");
 }
 
 function moveFile(index, offset) {
@@ -383,9 +632,10 @@ mergeBtn.addEventListener("click", async () => {
       }
       const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
 
-      copiedPages.forEach((page) => {
+      copiedPages.forEach((page, pageIndex) => {
+        const pageRotation = getPageRotation(file, pageIndex);
         const rotation =
-          (page.getRotation().angle + (fileRotations.get(file) || 0)) % 360;
+          (page.getRotation().angle + pageRotation + 360) % 360;
         page.setRotation(degrees(rotation));
         mergedPdf.addPage(page);
       });

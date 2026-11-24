@@ -115,6 +115,26 @@
       </div>
     </dialog>
 
+    <dialog
+      class="converter-dialog page-rotation-dialog"
+      id="pageRotationDialog"
+      aria-labelledby="pageRotationTitle">
+      <div class="converter-dialog-header">
+        <div>
+          <h2 id="pageRotationTitle">Visualizar páginas</h2>
+          <p id="pageRotationSummary">Carregando páginas...</p>
+        </div>
+        <button class="dialog-close-btn" id="closePageRotationBtn" type="button" aria-label="Fechar">
+          &times;
+        </button>
+      </div>
+      <div class="converter-message" id="pageRotationMessage" role="status" aria-live="polite"></div>
+      <div class="page-rotation-preview" id="pageRotationPreview" aria-label="Páginas do PDF"></div>
+      <div class="converter-dialog-actions">
+        <button class="dialog-cancel-btn" id="donePageRotationBtn" type="button">Concluir</button>
+      </div>
+    </dialog>
+
     <dialog class="converter-dialog splitter-dialog" id="splitterDialog" aria-labelledby="splitterTitle">
       <div class="converter-dialog-header">
         <div>
